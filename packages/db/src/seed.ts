@@ -73,7 +73,7 @@ async function main() {
       name: 'SawStop Table Saw',
       description: '10" professional cabinet saw with SawStop flesh-detection.',
       requiredCertifications: ['woodshop_basic'],
-      maxSessionMinutes: 120,
+
       cooldownHours: 0,
       isHighDemand: false,
     },
@@ -88,7 +88,7 @@ async function main() {
       name: 'Grizzly Metal Lathe',
       description: '12×36" metal lathe.',
       requiredCertifications: ['metal_lathe'],
-      maxSessionMinutes: 120,
+
       cooldownHours: 0,
       isHighDemand: false,
     },
@@ -103,7 +103,7 @@ async function main() {
       name: 'Avid CNC Router (4×8)',
       description: '4×8 ft PRO4848 gantry router.',
       requiredCertifications: ['cnc_basic'],
-      maxSessionMinutes: 120,
+
       cooldownHours: 4,
       isHighDemand: true,
     },
@@ -118,7 +118,7 @@ async function main() {
       name: 'Thunder Laser Nova 35 (60W)',
       description: '60W CO₂ laser, 35×24" bed.',
       requiredCertifications: ['laser_certified'],
-      maxSessionMinutes: 120,
+
       cooldownHours: 4,
       isHighDemand: true,
     },
@@ -133,7 +133,7 @@ async function main() {
       name: 'Soldering Station (×4)',
       description: 'Hakko FX-888D stations — any of 4 benches.',
       requiredCertifications: ['electronics_basic'],
-      maxSessionMinutes: 120,
+
       cooldownHours: 0,
       isHighDemand: false,
     },

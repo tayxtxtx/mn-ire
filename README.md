@@ -7,7 +7,6 @@ A mission-critical reservation and resource management system for a 12,000 sq ft
 ## Features
 
 ### Booking Engine
-- **2-hour session cap** with per-resource overrides
 - **7-day rolling window** — members can only book within the coming week
 - **Cooldown enforcement** for high-demand tools (CNC router, laser cutters): 4-hour gap between sessions from the same member
 - **Atomic overlap prevention** via PostgreSQL serializable transactions — two members clicking "Book" simultaneously will never double-book the same slot
@@ -371,7 +370,6 @@ All policy values are overrideable per-resource in the database and configurable
 
 | Policy | Default | Env variable |
 |---|---|---|
-| Max session length | 120 min | `DEFAULT_MAX_SESSION_MINUTES` |
 | Booking window | 7 days | `DEFAULT_BOOKING_WINDOW_DAYS` |
 | No-show grace period | 15 min | `DEFAULT_NO_SHOW_GRACE_MINUTES` |
 | High-demand cooldown | 4 hours | `HIGH_DEMAND_COOLDOWN_HOURS` |

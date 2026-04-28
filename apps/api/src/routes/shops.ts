@@ -67,7 +67,6 @@ const shopsRoutes: FastifyPluginAsync = async (fastify) => {
 
       reply.send({
         resourceId: resource.id,
-        maxSessionMinutes: resource.maxSessionMinutes,
         bookingWindowDays: resource.bookingWindowDays,
         bookedSlots: bookings.map((b) => ({
           id: b.id,

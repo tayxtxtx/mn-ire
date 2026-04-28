@@ -57,18 +57,7 @@ export async function createBooking(
     );
   }
 
-  // ── 3. Duration check ─────────────────────────────────────────────────────
-  const maxMs = resource.maxSessionMinutes * 60_000;
-  if (endsAt.getTime() - startsAt.getTime() > maxMs) {
-    throw new BookingError(
-      {
-        code: 'DURATION',
-        message: `Session exceeds the ${resource.maxSessionMinutes}-minute maximum.`,
-      },
-      422,
-    );
-  }
-
+  // ── 3. Duration sanity check ──────────────────────────────────────────────
   if (endsAt <= startsAt) {
     throw new BookingError(
       { code: 'DURATION', message: 'End time must be after start time.' },

@@ -19,7 +19,6 @@ interface ResourceDetail {
   description: string | null;
   status: 'AVAILABLE' | 'IN_USE' | 'MAINTENANCE';
   requiredCertifications: string[];
-  maxSessionMinutes: number;
   isHighDemand: boolean;
   cooldownHours: number;
 }
@@ -134,12 +133,13 @@ export default function ShopDetail() {
                   </p>
                 )}
 
-                <div style={{ fontSize: '0.75rem', marginBottom: '0.75rem' }}>
-                  <span style={{ color: 'var(--cds-text-secondary)' }}>
-                    Max session: {resource.maxSessionMinutes} min
-                    {resource.isHighDemand && ` · ${resource.cooldownHours}h cooldown`}
-                  </span>
-                </div>
+                {resource.isHighDemand && (
+                  <div style={{ fontSize: '0.75rem', marginBottom: '0.75rem' }}>
+                    <span style={{ color: 'var(--cds-text-secondary)' }}>
+                      {resource.cooldownHours}h cooldown between sessions
+                    </span>
+                  </div>
+                )}
 
                 {resource.requiredCertifications.length > 0 && (
                   <div style={{ marginBottom: '0.75rem' }}>

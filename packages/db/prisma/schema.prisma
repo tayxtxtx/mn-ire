@@ -79,7 +79,6 @@ model Resource {
   /// CertScope values required to book this resource
   requiredCertifications String[]
 
-  maxSessionMinutes Int            @default(120)
   /// Cooldown in hours between sessions for the same user. 0 = no cooldown.
   cooldownHours     Int            @default(0)
   isHighDemand      Boolean        @default(false)

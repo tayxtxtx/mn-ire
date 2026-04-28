@@ -3,7 +3,6 @@
 export const UID_PREFIX = 'mn-booking-' as const;
 
 export const BOOKING_POLICY = {
-  MAX_SESSION_MINUTES: 120,
   BOOKING_WINDOW_DAYS: 7,
   NO_SHOW_GRACE_MINUTES: 15,
   HIGH_DEMAND_COOLDOWN_HOURS: 4,

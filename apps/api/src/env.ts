@@ -27,7 +27,6 @@ const schema = z.object({
   KIOSK_PUBLIC_URL: z.string().url().default('http://localhost:5174'),
   SESSION_SECRET: z.string().min(32).default('change-me-in-prod-must-be-32-chars!'),
 
-  DEFAULT_MAX_SESSION_MINUTES: z.coerce.number().default(120),
   DEFAULT_BOOKING_WINDOW_DAYS: z.coerce.number().default(7),
   DEFAULT_NO_SHOW_GRACE_MINUTES: z.coerce.number().default(15),
   HIGH_DEMAND_COOLDOWN_HOURS: z.coerce.number().default(4),
