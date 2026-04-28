@@ -1,6 +1,6 @@
 # MakeNashville Booking System
 
-A full-stack resource reservation platform for a 12,000 sq ft makerspace. Members book equipment, check in on arrival, and a no-show timer automatically releases unused slots. Staff get an admin console, and a TV-friendly status screen shows live facility state.
+A resource reservation platform for makerspace. Members book equipment, check in on arrival, and a no-show timer automatically releases unused slots. Staff get an admin console, and a TV-friendly status screen shows live facility state.
 
 ---
 
