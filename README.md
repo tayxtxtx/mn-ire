@@ -12,10 +12,19 @@ A mission-critical reservation and resource management system for a 12,000 sq ft
 - **Atomic overlap prevention** via PostgreSQL serializable transactions — two members clicking "Book" simultaneously will never double-book the same slot
 - **Availability timeline** endpoint for building calendar UIs
 
+### Identity Provider (switchable)
+
+MN-IRE supports two login providers, selected via `AUTH_PROVIDER` in `.env`. You can switch between them without changing any application code.
+
+| Provider | `AUTH_PROVIDER` | Cert source |
+|---|---|---|
+| **Authentik** (default) | `authentik` | Extracted from OIDC token custom scopes on every login |
+| **Sign in with Slack** | `slack` | Managed directly in the DB by an admin |
+
 ### Safety Certification Gating
-- Certifications live in Authentik as custom OIDC scopes (`woodshop_basic`, `cnc_advanced`, `laser_certified`, etc.)
-- On every login the API snapshots the member's current certs into the database
 - Booking attempts are rejected with a 403 if the member lacks any required cert for that resource — no client-side trust
+- With Authentik: certs come from token scopes (`woodshop_basic`, `cnc_advanced`, `laser_certified`, etc.) and are re-synced to the DB on every login
+- With Slack login: certs are assigned by an admin in Prisma Studio (or a future admin UI) and persist until changed
 
 ### "Who's In" Dashboard
 - Real-time view of every active session: member name, machine, minutes remaining
@@ -114,21 +123,42 @@ cp .env.example .env
 
 Open `.env` and fill in each section. The table below shows which variables are required for the system to start versus optional integrations.
 
-| Variable | Required | Notes |
-|---|---|---|
-| `DATABASE_URL` | ✅ | PostgreSQL connection string |
-| `REDIS_URL` | ✅ | Redis connection string |
-| `SESSION_SECRET` | ✅ | Min 32 characters — generate with `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` |
-| `AUTHENTIK_ISSUER_URL` | ✅ | e.g. `https://auth.example.org/application/o/mn-ire/` |
-| `AUTHENTIK_CLIENT_ID` | ✅ | From the Authentik provider detail page |
-| `AUTHENTIK_CLIENT_SECRET` | ✅ | From the Authentik provider detail page |
-| `AUTHENTIK_REDIRECT_URI` | ✅ | Must match redirect URI registered in Authentik |
-| `GOOGLE_CALENDAR_CLIENT_ID` | ❌ | GCal sync disabled if omitted |
-| `GOOGLE_CALENDAR_CLIENT_SECRET` | ❌ | GCal sync disabled if omitted |
-| `GOOGLE_CALENDAR_REFRESH_TOKEN` | ❌ | GCal sync disabled if omitted |
-| `SLACK_BOT_TOKEN` | ❌ | Slack bot disabled if omitted |
-| `SLACK_APP_TOKEN` | ❌ | Slack bot disabled if omitted |
-| `SLACK_SIGNING_SECRET` | ❌ | Slack bot disabled if omitted |
+**Always required:**
+
+| Variable | Notes |
+|---|---|
+| `DATABASE_URL` | PostgreSQL connection string |
+| `REDIS_URL` | Redis connection string |
+| `SESSION_SECRET` | Min 32 characters — generate with `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` |
+| `AUTH_PROVIDER` | `authentik` (default) or `slack` |
+
+**Required when `AUTH_PROVIDER=authentik`:**
+
+| Variable | Notes |
+|---|---|
+| `AUTHENTIK_ISSUER_URL` | e.g. `https://auth.example.org/application/o/mn-ire/` |
+| `AUTHENTIK_CLIENT_ID` | From the Authentik provider detail page |
+| `AUTHENTIK_CLIENT_SECRET` | From the Authentik provider detail page |
+| `AUTHENTIK_REDIRECT_URI` | Must match redirect URI registered in Authentik |
+
+**Required when `AUTH_PROVIDER=slack`:**
+
+| Variable | Notes |
+|---|---|
+| `SLACK_CLIENT_ID` | From your Slack app's Basic Information page |
+| `SLACK_CLIENT_SECRET` | From your Slack app's Basic Information page |
+| `SLACK_REDIRECT_URI` | e.g. `https://your-domain:4000/auth/callback` |
+
+**Optional integrations (disabled when omitted):**
+
+| Variable | Notes |
+|---|---|
+| `GOOGLE_CALENDAR_CLIENT_ID` | GCal sync disabled if omitted |
+| `GOOGLE_CALENDAR_CLIENT_SECRET` | GCal sync disabled if omitted |
+| `GOOGLE_CALENDAR_REFRESH_TOKEN` | GCal sync disabled if omitted |
+| `SLACK_BOT_TOKEN` | Slack notifications disabled if omitted |
+| `SLACK_APP_TOKEN` | Slack notifications disabled if omitted |
+| `SLACK_SIGNING_SECRET` | Slack notifications disabled if omitted |
 
 ---
 
@@ -157,7 +187,15 @@ pnpm db:studio    # opens Prisma Studio at http://localhost:5555
 
 ---
 
-### 5. Set up Authentik
+### 5. Set up identity provider
+
+Choose **one** of the following options and set `AUTH_PROVIDER` accordingly.
+
+---
+
+#### Option A — Authentik (`AUTH_PROVIDER=authentik`)
+
+Authentik is the full-featured option. Certifications are embedded in the OIDC token as custom scopes, so they're enforced automatically at login without any manual DB editing.
 
 1. Deploy Authentik (see [Authentik docs](https://docs.goauthentik.io/docs/installation/docker-compose)) or use an existing instance.
 2. Create an **OAuth2/OpenID Provider** with:
@@ -171,6 +209,37 @@ pnpm db:studio    # opens Prisma Studio at http://localhost:5555
    Assign the mapping to the provider's allowed scopes.
 4. Create an **Application** backed by that provider. Copy the **Client ID** and **Client Secret** into `.env`.
 5. Assign certifications to members by editing their user profile and granting the relevant scope mappings.
+6. Set in `.env`:
+   ```
+   AUTH_PROVIDER=authentik
+   AUTHENTIK_ISSUER_URL=https://auth.your-domain/application/o/mn-ire/
+   AUTHENTIK_CLIENT_ID=<client id>
+   AUTHENTIK_CLIENT_SECRET=<client secret>
+   AUTHENTIK_REDIRECT_URI=https://your-domain/auth/callback
+   ```
+
+---
+
+#### Option B — Sign in with Slack (`AUTH_PROVIDER=slack`)
+
+The simpler option if your team already lives in Slack. No separate auth server to run. Certifications are **not** carried in the Slack token — an admin assigns them directly in Prisma Studio (or a future admin UI) after the member's first login.
+
+1. Go to [api.slack.com/apps](https://api.slack.com/apps) → **Create New App → From scratch**.
+2. Under **Features → OAuth & Permissions**:
+   - Add redirect URL: `https://your-domain:4000/auth/callback`
+   - Add **User Token Scopes**: `openid`, `profile`, `email`
+3. Under **Settings → Manage Distribution → Sign in with Slack** — enable it.
+4. Copy **Basic Information → App Credentials → Client ID** and **Client Secret**.
+5. Set in `.env`:
+   ```
+   AUTH_PROVIDER=slack
+   SLACK_CLIENT_ID=<client id>
+   SLACK_CLIENT_SECRET=<client secret>
+   SLACK_REDIRECT_URI=https://your-domain:4000/auth/callback
+   ```
+6. After a member logs in for the first time, open Prisma Studio (`pnpm db:studio`), find their `User` row, and set their `certifications` array (e.g. `["woodshop_basic", "laser_certified"]`).
+
+> **Note:** The Slack bot (notifications, guild alerts, no-show DMs) uses a separate bot token and works independently of whichever login provider you choose. See step 7 for bot setup.
 
 ---
 

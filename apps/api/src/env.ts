@@ -5,21 +5,34 @@ const schema = z.object({
   DATABASE_URL: z.string().url(),
   REDIS_URL: z.string().url(),
 
-  AUTHENTIK_ISSUER_URL: z.string().url(),
-  AUTHENTIK_CLIENT_ID: z.string().min(1),
-  AUTHENTIK_CLIENT_SECRET: z.string().min(1),
-  AUTHENTIK_REDIRECT_URI: z.string().url(),
+  // ── Identity provider ────────────────────────────────────────────────────
+  // Set to "slack" to use Slack OAuth instead of Authentik OIDC.
+  // When using Slack, certifications are managed directly in the DB
+  // rather than derived from OIDC token scopes.
+  AUTH_PROVIDER: z.enum(['authentik', 'slack']).default('authentik'),
+
+  // Authentik (required when AUTH_PROVIDER=authentik)
+  AUTHENTIK_ISSUER_URL: z.string().default(''),
+  AUTHENTIK_CLIENT_ID: z.string().default(''),
+  AUTHENTIK_CLIENT_SECRET: z.string().default(''),
+  AUTHENTIK_REDIRECT_URI: z.string().default(''),
   AUTHENTIK_CERT_SCOPES: z.string().default(''),
+
+  // Slack OAuth (required when AUTH_PROVIDER=slack)
+  SLACK_CLIENT_ID: z.string().default(''),
+  SLACK_CLIENT_SECRET: z.string().default(''),
+  SLACK_REDIRECT_URI: z.string().default(''),
+
+  // Slack bot (optional — notifications work regardless of AUTH_PROVIDER)
+  SLACK_BOT_TOKEN: z.string().default(''),
+  SLACK_APP_TOKEN: z.string().default(''),
+  SLACK_SIGNING_SECRET: z.string().default(''),
+  SLACK_GUILD_CHANNELS: z.string().default(''),
 
   GOOGLE_CALENDAR_CLIENT_ID: z.string().default(''),
   GOOGLE_CALENDAR_CLIENT_SECRET: z.string().default(''),
   GOOGLE_CALENDAR_REFRESH_TOKEN: z.string().default(''),
   GOOGLE_CALENDAR_UID_PREFIX: z.string().default('mn-booking-'),
-
-  SLACK_BOT_TOKEN: z.string().default(''),
-  SLACK_APP_TOKEN: z.string().default(''),
-  SLACK_SIGNING_SECRET: z.string().default(''),
-  SLACK_GUILD_CHANNELS: z.string().default(''),
 
   API_PORT: z.coerce.number().default(4000),
   API_PUBLIC_URL: z.string().url().default('http://localhost:4000'),
@@ -41,3 +54,22 @@ if (!parsed.success) {
 }
 
 export const env = parsed.data;
+
+// Validate that whichever provider is selected actually has its credentials.
+if (env.AUTH_PROVIDER === 'authentik') {
+  const missing = (['AUTHENTIK_ISSUER_URL', 'AUTHENTIK_CLIENT_ID', 'AUTHENTIK_CLIENT_SECRET', 'AUTHENTIK_REDIRECT_URI'] as const)
+    .filter((k) => !env[k]);
+  if (missing.length) {
+    console.error(`AUTH_PROVIDER=authentik but missing: ${missing.join(', ')}`);
+    process.exit(1);
+  }
+}
+
+if (env.AUTH_PROVIDER === 'slack') {
+  const missing = (['SLACK_CLIENT_ID', 'SLACK_CLIENT_SECRET', 'SLACK_REDIRECT_URI'] as const)
+    .filter((k) => !env[k]);
+  if (missing.length) {
+    console.error(`AUTH_PROVIDER=slack but missing: ${missing.join(', ')}`);
+    process.exit(1);
+  }
+}
