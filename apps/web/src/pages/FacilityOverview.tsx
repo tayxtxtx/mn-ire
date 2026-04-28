@@ -9,6 +9,7 @@ import {
 } from '@carbon/react';
 import { Link } from 'react-router-dom';
 import type { WhosInEntry } from '@makenashville/shared';
+import { TEST_MODE, MOCK_SHOPS, MOCK_WHOS_IN } from '../mockData.js';  // DELETE with mockData.ts
 import { resourceStatusIntent } from '@makenashville/shared';
 
 interface ShopSummary {
@@ -43,6 +44,12 @@ export default function FacilityOverview() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (TEST_MODE) {
+      setShops(MOCK_SHOPS as ShopSummary[]);
+      setWhosIn(MOCK_WHOS_IN);
+      setLoading(false);
+      return;
+    }
     Promise.all([
       fetch('/api/shops', { credentials: 'include' }).then((r) => r.json()),
       fetch('/api/admin/whos-in', { credentials: 'include' }).then((r) => r.json()),

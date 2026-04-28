@@ -5,6 +5,7 @@ import {
   HeaderGlobalBar, HeaderGlobalAction,
 } from '@carbon/react';
 import { UserAvatar, Logout, Settings } from '@carbon/icons-react';
+import { TEST_MODE, MOCK_USER } from '../mockData.js';  // DELETE with mockData.ts
 
 interface Me {
   sub: string;
@@ -16,9 +17,10 @@ interface Me {
 
 export default function AppHeader() {
   const navigate = useNavigate();
-  const [me, setMe] = useState<Me | null>(null);
+  const [me, setMe] = useState<Me | null>(TEST_MODE ? (MOCK_USER as unknown as Me) : null);
 
   useEffect(() => {
+    if (TEST_MODE) return;
     fetch('/auth/me', { credentials: 'include' })
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => setMe(data as Me | null))
@@ -33,7 +35,7 @@ export default function AppHeader() {
   return (
     <Header aria-label="MakeNashville Booking System">
       <HeaderName href="/" prefix="MakeNashville">
-        Resource Ecosystem
+        {TEST_MODE ? 'Resource Ecosystem — TEST MODE' : 'Resource Ecosystem'}
       </HeaderName>
       <HeaderNavigation aria-label="Primary navigation">
         <HeaderMenuItem>

@@ -8,6 +8,7 @@ import {
   SkeletonText, InlineNotification, Pagination,
 } from '@carbon/react';
 import type { BookingStatus } from '@makenashville/shared';
+import { TEST_MODE, MOCK_ADMIN_BOOKINGS } from '../../mockData.js';  // DELETE with mockData.ts
 import { bookingStatusIntent } from '@makenashville/shared';
 import AdminBookingEditModal from './AdminBookingEditModal.js';
 
@@ -58,6 +59,12 @@ export default function AdminBookings() {
   const [editing, setEditing]       = useState<AdminBooking | null>(null);
 
   const load = useCallback(() => {
+    if (TEST_MODE) {
+      setBookings(MOCK_ADMIN_BOOKINGS.data as AdminBooking[]);
+      setTotal(MOCK_ADMIN_BOOKINGS.meta.total);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     const params = new URLSearchParams();
     if (statusFilter) params.set('status', statusFilter);
@@ -76,6 +83,7 @@ export default function AdminBookings() {
   useEffect(() => { load(); }, [load]);
 
   const forcedCancel = async (id: string) => {
+    if (TEST_MODE) return;
     await fetch(`/api/admin/bookings/${id}`, {
       method: 'DELETE', credentials: 'include',
     });

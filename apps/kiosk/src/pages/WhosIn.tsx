@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Grid, Column, Tile, Button, SkeletonText, Tag } from '@carbon/react';
 import type { WhosInEntry } from '@makenashville/shared';
+import { TEST_MODE, MOCK_WHOS_IN } from '../mockData.js';  // DELETE with mockData.ts
 
 export default function WhosIn() {
   const navigate = useNavigate();
@@ -9,6 +10,11 @@ export default function WhosIn() {
   const [loading, setLoading] = useState(true);
 
   const load = () => {
+    if (TEST_MODE) {
+      setEntries(MOCK_WHOS_IN);
+      setLoading(false);
+      return;
+    }
     fetch('/api/admin/whos-in', { credentials: 'include' })
       .then((r) => r.json())
       .then((data) => setEntries(data as WhosInEntry[]))

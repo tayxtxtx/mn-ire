@@ -87,12 +87,38 @@ model Resource {
   bookingWindowDays Int            @default(7)
   status            ResourceStatus @default(AVAILABLE)
 
+  /// When true, this resource appears in the kiosk walk-in tool selector.
+  showOnKiosk Boolean @default(true)
+
   bookings Booking[]
+  walkIns  WalkIn[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@map("resources")
+}
+
+/// A walk-in log entry created at the kiosk by non-members or members without a booking.
+model WalkIn {
+  id        String  @id @default(uuid())
+  firstName String
+  lastName  String
+  email     String
+  phone     String?
+
+  /// True if the visitor has completed facility orientation.
+  passedOrientation Boolean @default(false)
+
+  /// Optional: the resource the visitor intends to use.
+  resourceId String?
+  resource   Resource? @relation(fields: [resourceId], references: [id], onDelete: SetNull)
+
+  signedInAt  DateTime  @default(now())
+  signedOutAt DateTime?
+
+  @@index([signedInAt])
+  @@map("walk_ins")
 }
 
 model Booking {

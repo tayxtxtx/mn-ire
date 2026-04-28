@@ -12,6 +12,7 @@ import shopsRoutes from './routes/shops.js';
 import bookingsRoutes from './routes/bookings.js';
 import adminRoutes from './routes/admin.js';
 import adminBookingsRoutes from './routes/adminBookings.js';
+import walkInRoutes from './routes/walkin.js';
 import { startGCalSyncScheduler } from './services/gcal.js';
 import { startSlackApp } from './services/slack.js';
 import { startNoShowWorker } from './workers/noshow.js';
@@ -67,6 +68,7 @@ await fastify.register(shopsRoutes);
 await fastify.register(bookingsRoutes);
 await fastify.register(adminRoutes);
 await fastify.register(adminBookingsRoutes);
+await fastify.register(walkInRoutes);
 
 // ── Health check ──────────────────────────────────────────────────────────────
 

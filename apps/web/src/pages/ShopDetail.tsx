@@ -12,6 +12,7 @@ import {
   InlineNotification,
 } from '@carbon/react';
 import { resourceStatusIntent } from '@makenashville/shared';
+import { TEST_MODE, MOCK_SHOP_DETAILS } from '../mockData.js';  // DELETE with mockData.ts
 
 interface ResourceDetail {
   id: string;
@@ -46,6 +47,13 @@ export default function ShopDetail() {
 
   useEffect(() => {
     if (!slug) return;
+    if (TEST_MODE) {
+      const mock = MOCK_SHOP_DETAILS[slug];
+      setShop(mock ? (mock as ShopDetailData) : null);
+      if (!mock) setError(`No mock data for shop "${slug}".`);
+      setLoading(false);
+      return;
+    }
     fetch(`/api/shops/${slug}`, { credentials: 'include' })
       .then((r) => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);

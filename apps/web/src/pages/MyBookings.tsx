@@ -15,6 +15,7 @@ import {
   Button,
 } from '@carbon/react';
 import type { BookingDto } from '@makenashville/shared';
+import { TEST_MODE, MOCK_BOOKINGS } from '../mockData.js';  // DELETE with mockData.ts
 import { bookingStatusIntent } from '@makenashville/shared';
 
 const INTENT_TO_CARBON: Record<string, 'green' | 'blue' | 'red' | 'gray'> = {
@@ -39,6 +40,11 @@ export default function MyBookings() {
   const [error, setError] = useState<string | null>(null);
 
   const load = () => {
+    if (TEST_MODE) {
+      setBookings(MOCK_BOOKINGS);
+      setLoading(false);
+      return;
+    }
     fetch('/api/bookings', { credentials: 'include' })
       .then((r) => r.json())
       .then((data) => setBookings(data as BookingDto[]))
@@ -49,6 +55,7 @@ export default function MyBookings() {
   useEffect(load, []);
 
   const cancel = async (id: string) => {
+    if (TEST_MODE) return;
     await fetch(`/api/bookings/${id}`, {
       method: 'DELETE',
       credentials: 'include',

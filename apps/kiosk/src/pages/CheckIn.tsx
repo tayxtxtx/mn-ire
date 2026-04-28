@@ -10,6 +10,7 @@ import {
   InlineNotification,
 } from '@carbon/react';
 import type { BookingDto } from '@makenashville/shared';
+import { TEST_MODE, MOCK_CONFIRMED_BOOKINGS } from '../mockData.js';  // DELETE with mockData.ts
 import { bookingStatusIntent } from '@makenashville/shared';
 
 const INTENT_TO_CARBON: Record<string, 'green' | 'blue' | 'red' | 'gray'> = {
@@ -28,6 +29,11 @@ export default function CheckIn() {
   const [success, setSuccess] = useState<string | null>(null);
 
   useEffect(() => {
+    if (TEST_MODE) {
+      setBookings(MOCK_CONFIRMED_BOOKINGS);
+      setLoading(false);
+      return;
+    }
     fetch('/api/bookings?status=CONFIRMED', { credentials: 'include' })
       .then((r) => r.json())
       .then((data) => setBookings(data as BookingDto[]))
@@ -38,6 +44,13 @@ export default function CheckIn() {
   const checkIn = async (id: string, resourceName: string) => {
     setCheckingIn(id);
     setError(null);
+    if (TEST_MODE) {
+      await new Promise((r) => setTimeout(r, 600));
+      setSuccess(`Checked in to ${resourceName}. Enjoy your session! (test mode)`);
+      setBookings((prev) => prev.filter((b) => b.id !== id));
+      setCheckingIn(null);
+      return;
+    }
     try {
       const res = await fetch(`/api/bookings/${id}/checkin`, {
         method: 'POST',

@@ -4,6 +4,7 @@ import {
   DatePicker, DatePickerInput, InlineNotification,
 } from '@carbon/react';
 import type { BookingStatus } from '@makenashville/shared';
+import { TEST_MODE } from '../../mockData.js';  // DELETE with mockData.ts
 
 interface AdminBooking {
   id: string;
@@ -36,6 +37,7 @@ export default function AdminBookingEditModal({ booking, onClose, onSaved }: Pro
   const [error,    setError]    = useState<string | null>(null);
 
   const handleSave = async () => {
+    if (TEST_MODE) { onSaved(); return; }
     setSaving(true);
     setError(null);
     try {
