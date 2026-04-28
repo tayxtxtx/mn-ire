@@ -2,9 +2,9 @@
  * Booking Service — all create/cancel/checkin business logic.
  * Routes stay thin; this module owns the invariants.
  */
-import type { PrismaClient } from '@mn-ire/db';
+import type { PrismaClient } from '@makenashville/db';
 import type { Redis } from 'ioredis';
-import { BOOKING_POLICY } from '@mn-ire/shared';
+import { BOOKING_POLICY } from '@makenashville/shared';
 
 export interface BookingConflict {
   code: 'CERT_MISSING' | 'COOLDOWN' | 'OVERLAP' | 'WINDOW' | 'DURATION' | 'NO_SLOT';

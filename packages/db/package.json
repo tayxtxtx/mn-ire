@@ -1,5 +1,5 @@
 {
-  "name": "@mn-ire/db",
+  "name": "@makenashville/db",
   "version": "0.0.1",
   "private": true,
   "license": "UNLICENSED",
@@ -22,7 +22,7 @@
     "@prisma/client": "^5.17.0"
   },
   "devDependencies": {
-    "@mn-ire/tsconfig": "workspace:*",
+    "@makenashville/tsconfig": "workspace:*",
     "prisma": "^5.17.0",
     "tsx": "^4.16.2",
     "typescript": "^5.5.4"

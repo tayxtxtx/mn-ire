@@ -1,5 +1,5 @@
 {
-  "extends": "@mn-ire/tsconfig/node.json",
+  "extends": "@makenashville/tsconfig/node.json",
   "compilerOptions": {
     "rootDir": "src",
     "outDir": "dist"

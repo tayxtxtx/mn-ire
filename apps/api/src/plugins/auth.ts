@@ -11,28 +11,38 @@
  */
 import fp from 'fastify-plugin';
 import type { FastifyPluginAsync, FastifyRequest, FastifyReply } from 'fastify';
-import type { AuthClaims } from '@mn-ire/shared';
+import type { AuthClaims } from '@makenashville/shared';
 import { env } from '../env.js';
 import { registerAuthentikRoutes } from './auth/authentik.js';
 import { registerSlackOAuthRoutes } from './auth/slack-oauth.js';
 
 declare module 'fastify' {
   interface FastifyInstance {
-    authenticate: (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
+    authenticate:   (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
+    requireAdmin:   (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
   }
   interface FastifyRequest {
-    user: AuthClaims | null;
+    user:    AuthClaims | null;
+    isAdmin: boolean;
   }
 }
 
 const authPlugin: FastifyPluginAsync = async (fastify) => {
-  // Decorate every request with a nullable user
-  fastify.decorateRequest('user', null);
+  const adminEmails = new Set(
+    env.ADMIN_EMAILS.split(',').map((e) => e.trim()).filter(Boolean),
+  );
 
-  // Populate req.user from the session on every request
+  // Decorate every request with a nullable user + isAdmin flag
+  fastify.decorateRequest('user', null);
+  fastify.decorateRequest('isAdmin', false);
+
+  // Populate req.user and req.isAdmin from the session on every request
   fastify.addHook('preHandler', async (req) => {
     if (req.session.user) {
       req.user = req.session.user;
+      // Check DB isAdmin flag (cached in session for performance)
+      const sessionAdmin = (req.session as unknown as Record<string, unknown>)['isAdmin'];
+      req.isAdmin = sessionAdmin === true;
     }
   });
 
@@ -45,6 +55,23 @@ const authPlugin: FastifyPluginAsync = async (fastify) => {
       }
     },
   );
+
+  // Admin guard — requires authenticated + isAdmin
+  fastify.decorate(
+    'requireAdmin',
+    async (req: FastifyRequest, reply: FastifyReply) => {
+      if (!req.user) {
+        reply.code(401).send({ code: 'UNAUTHENTICATED', message: 'Login required.' });
+        return;
+      }
+      if (!req.isAdmin) {
+        reply.code(403).send({ code: 'FORBIDDEN', message: 'Admin access required.' });
+      }
+    },
+  );
+
+  // Expose adminEmails set so auth providers can use it
+  (fastify as unknown as Record<string, unknown>)['_adminEmails'] = adminEmails;
 
   // ── Provider-specific login / callback routes ─────────────────────────────
 
@@ -68,7 +95,7 @@ const authPlugin: FastifyPluginAsync = async (fastify) => {
       reply.code(401).send({ code: 'UNAUTHENTICATED', message: 'Not logged in.' });
       return;
     }
-    reply.send(req.user);
+    reply.send({ ...req.user, isAdmin: req.isAdmin });
   });
 
   // Expose which provider is active (useful for the frontend login button label)

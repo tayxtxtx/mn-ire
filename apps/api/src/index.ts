@@ -11,6 +11,7 @@ import authPlugin from './plugins/auth.js';
 import shopsRoutes from './routes/shops.js';
 import bookingsRoutes from './routes/bookings.js';
 import adminRoutes from './routes/admin.js';
+import adminBookingsRoutes from './routes/adminBookings.js';
 import { startGCalSyncScheduler } from './services/gcal.js';
 import { startSlackApp } from './services/slack.js';
 import { startNoShowWorker } from './workers/noshow.js';
@@ -65,6 +66,7 @@ await fastify.register(authPlugin);
 await fastify.register(shopsRoutes);
 await fastify.register(bookingsRoutes);
 await fastify.register(adminRoutes);
+await fastify.register(adminBookingsRoutes);
 
 // ── Health check ──────────────────────────────────────────────────────────────
 
@@ -93,7 +95,7 @@ fastify.addHook('onClose', async () => {
 
 try {
   await fastify.listen({ port: env.API_PORT, host: '0.0.0.0' });
-  fastify.log.info(`MN-IRE API listening on port ${env.API_PORT}`);
+  fastify.log.info(`MakeNashville Booking System API listening on port ${env.API_PORT}`);
 } catch (err) {
   fastify.log.error(err);
   process.exit(1);

@@ -9,8 +9,8 @@ import {
   SkeletonText,
   InlineNotification,
 } from '@carbon/react';
-import type { BookingDto } from '@mn-ire/shared';
-import { bookingStatusIntent } from '@mn-ire/shared';
+import type { BookingDto } from '@makenashville/shared';
+import { bookingStatusIntent } from '@makenashville/shared';
 
 const INTENT_TO_CARBON: Record<string, 'green' | 'blue' | 'red' | 'gray'> = {
   green: 'green',

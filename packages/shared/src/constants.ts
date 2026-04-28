@@ -1,4 +1,4 @@
-/** Prefix for all MN-IRE-originated GCal event IDs. Used to detect and
+/** Prefix for all MakeNashville Booking System-originated GCal event IDs. Used to detect and
  *  short-circuit bidirectional sync loops. Must match GOOGLE_CALENDAR_UID_PREFIX in .env. */
 export const UID_PREFIX = 'mn-booking-' as const;
 

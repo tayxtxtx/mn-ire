@@ -1,5 +1,5 @@
 {
-  "name": "@mn-ire/shared",
+  "name": "@makenashville/shared",
   "version": "0.0.1",
   "private": true,
   "license": "UNLICENSED",
@@ -19,7 +19,7 @@
     "dev": "tsc --project tsconfig.json --watch"
   },
   "devDependencies": {
-    "@mn-ire/tsconfig": "workspace:*",
+    "@makenashville/tsconfig": "workspace:*",
     "typescript": "^5.5.4"
   }
 }

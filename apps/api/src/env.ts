@@ -40,6 +40,10 @@ const schema = z.object({
   KIOSK_PUBLIC_URL: z.string().url().default('http://localhost:5174'),
   SESSION_SECRET: z.string().min(32).default('change-me-in-prod-must-be-32-chars!'),
 
+  // Comma-separated emails that are auto-promoted to isAdmin=true on login.
+  // Useful for bootstrapping without touching the DB directly.
+  ADMIN_EMAILS: z.string().default(''),
+
   DEFAULT_BOOKING_WINDOW_DAYS: z.coerce.number().default(7),
   DEFAULT_NO_SHOW_GRACE_MINUTES: z.coerce.number().default(15),
   HIGH_DEMAND_COOLDOWN_HOURS: z.coerce.number().default(4),

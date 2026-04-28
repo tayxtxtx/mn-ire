@@ -15,7 +15,7 @@
  * gracefully — no hard dependency on Slack being wired up per-member.
  */
 import { App } from '@slack/bolt';
-import type { Booking, Resource, Shop, User } from '@mn-ire/db';
+import type { Booking, Resource, Shop, User } from '@makenashville/db';
 import { env } from '../env.js';
 
 // ── Type helpers ───────────────────────────────────────────────────────────
@@ -204,7 +204,7 @@ function registerListeners(app: App): void {
   // /mnire-status — quick health check from Slack
   app.command('/mnire-status', async ({ ack, respond }) => {
     await ack();
-    await respond({ text: '✅ MN-IRE API is running.' });
+    await respond({ text: '✅ MakeNashville Booking System API is running.' });
   });
 
   // Log all errors

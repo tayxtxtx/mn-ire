@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Grid, Column, Tile, Button, SkeletonText, Tag } from '@carbon/react';
-import type { WhosInEntry } from '@mn-ire/shared';
+import type { WhosInEntry } from '@makenashville/shared';
 
 export default function WhosIn() {
   const navigate = useNavigate();

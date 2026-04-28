@@ -1,24 +1,24 @@
 /**
  * Google Calendar Sync Service
  * ─────────────────────────────
- * OUTBOUND (MN-IRE → GCal):
+ * OUTBOUND (MakeNashville Booking System → GCal):
  *   syncBookingToGCal  — creates / updates a GCal event for a booking.
  *   deleteGCalEvent    — deletes the GCal event when a booking is cancelled.
  *
- * INBOUND (GCal → MN-IRE):
+ * INBOUND (GCal → MakeNashville Booking System):
  *   runIncrementalSync — polls each shop's GCal calendar using a stored
  *                        syncToken; ignores events with the UID_PREFIX to
  *                        prevent infinite update loops.
  *
  * Loop-prevention contract
  * ────────────────────────
- * Every MN-IRE event carries `extendedProperties.private.mnUid = UID_PREFIX + bookingId`.
+ * Every MakeNashville Booking System event carries `extendedProperties.private.mnUid = UID_PREFIX + bookingId`.
  * The inbound watcher skips any event whose mnUid starts with UID_PREFIX.
  * No other guard is needed.
  */
 import { google } from 'googleapis';
-import type { PrismaClient, Booking, Resource, Shop, User } from '@mn-ire/db';
-import { UID_PREFIX } from '@mn-ire/shared';
+import type { PrismaClient, Booking, Resource, Shop, User } from '@makenashville/db';
+import { UID_PREFIX } from '@makenashville/shared';
 import { env } from '../env.js';
 
 // ── OAuth2 client (singleton) ──────────────────────────────────────────────
@@ -62,7 +62,7 @@ type BookingWithRelations = Booking & {
   user: User;
 };
 
-// ── Outbound: MN-IRE → GCal ────────────────────────────────────────────────
+// ── Outbound: MakeNashville Booking System → GCal ────────────────────────────────────────────────
 
 /**
  * Create or update the GCal event for a booking.
@@ -82,7 +82,7 @@ export async function syncBookingToGCal(
   const mnUid = `${UID_PREFIX}${booking.id}`;
 
   const eventBody = {
-    summary: `[MN-IRE] ${booking.user.displayName} — ${booking.resource.name}`,
+    summary: `[MakeNashville Booking System] ${booking.user.displayName} — ${booking.resource.name}`,
     description: `Booking ID: ${booking.id}\nMember: ${booking.user.email}\nResource: ${booking.resource.name} (${booking.resource.shop.name})`,
     start: { dateTime: booking.startsAt.toISOString() },
     end: { dateTime: booking.endsAt.toISOString() },
@@ -144,7 +144,7 @@ export async function deleteGCalEvent(
   }
 }
 
-// ── Inbound: GCal → MN-IRE ────────────────────────────────────────────────
+// ── Inbound: GCal → MakeNashville Booking System ────────────────────────────────────────────────
 
 /**
  * Run an incremental sync for all shops that have a GCal calendar configured.
@@ -153,7 +153,7 @@ export async function deleteGCalEvent(
  *   1. For each shop, load the stored syncToken from CalendarSyncState.
  *   2. List events using the syncToken (or do a full sync if no token).
  *   3. For each returned event, skip any with mnUid starting with UID_PREFIX
- *      (those are MN-IRE-originated — loop prevention).
+ *      (those are MakeNashville Booking System-originated — loop prevention).
  *   4. External events create a "block" booking (userId = system sentinel).
  *   5. Persist the new syncToken.
  *
@@ -268,7 +268,7 @@ async function processInboundEvent(
 
   const mnUid = event.extendedProperties?.private?.['mnUid'] as string | undefined;
 
-  // ── Loop prevention: skip all MN-IRE-originated events ──────────────────
+  // ── Loop prevention: skip all MakeNashville Booking System-originated events ──────────────────
   if (mnUid?.startsWith(UID_PREFIX)) return;
 
   // Deleted/cancelled external events — find and cancel corresponding block booking

@@ -4,6 +4,7 @@ import AppHeader from './components/AppHeader.js';
 import FacilityOverview from './pages/FacilityOverview.js';
 import ShopDetail from './pages/ShopDetail.js';
 import MyBookings from './pages/MyBookings.js';
+import AdminBookings from './pages/admin/AdminBookings.js';
 
 export default function App() {
   return (
@@ -11,10 +12,11 @@ export default function App() {
       <AppHeader />
       <Content>
         <Routes>
-          <Route path="/" element={<FacilityOverview />} />
-          <Route path="/shop/:slug" element={<ShopDetail />} />
+          <Route path="/"            element={<FacilityOverview />} />
+          <Route path="/shop/:slug"  element={<ShopDetail />} />
           <Route path="/my-bookings" element={<MyBookings />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path="/admin"       element={<AdminBookings />} />
+          <Route path="*"            element={<Navigate to="/" replace />} />
         </Routes>
       </Content>
     </Theme>

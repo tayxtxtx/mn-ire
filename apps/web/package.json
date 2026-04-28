@@ -1,5 +1,5 @@
 {
-  "name": "@mn-ire/web",
+  "name": "@makenashville/web",
   "version": "0.0.1",
   "private": true,
   "license": "UNLICENSED",
@@ -11,7 +11,7 @@
     "preview": "vite preview --port 5173"
   },
   "dependencies": {
-    "@mn-ire/shared": "workspace:*",
+    "@makenashville/shared": "workspace:*",
     "@carbon/react": "^1.62.0",
     "@carbon/styles": "^1.62.0",
     "@carbon/icons-react": "^11.43.0",
@@ -20,7 +20,7 @@
     "react-router-dom": "^6.25.1"
   },
   "devDependencies": {
-    "@mn-ire/tsconfig": "workspace:*",
+    "@makenashville/tsconfig": "workspace:*",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.1",

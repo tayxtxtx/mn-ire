@@ -15,6 +15,10 @@ import { env } from '../../env.js';
 import type { SessionUser } from './types.js';
 import './types.js'; // activate FastifySessionObject module augmentation
 
+function getAdminEmails(fastify: FastifyInstance): Set<string> {
+  return ((fastify as unknown as Record<string, unknown>)['_adminEmails'] as Set<string>) ?? new Set();
+}
+
 const SLACK_AUTHORIZE_URL = 'https://slack.com/openid/connect/authorize';
 const SLACK_TOKEN_URL = 'https://slack.com/api/openid.connect.token';
 const SLACK_USERINFO_URL = 'https://slack.com/api/openid.connect.userInfo';
@@ -104,6 +108,8 @@ export async function registerSlackOAuthRoutes(fastify: FastifyInstance): Promis
       }
 
       const slackUserId = slackUser['https://slack.com/user_id'] ?? slackUser.sub;
+      const adminEmails = getAdminEmails(fastify);
+      const shouldBeAdmin = adminEmails.has(slackUser.email);
 
       // Upsert user — certifications come from the DB, not the token
       const dbUser = await fastify.prisma.user.upsert({
@@ -112,13 +118,15 @@ export async function registerSlackOAuthRoutes(fastify: FastifyInstance): Promis
           email: slackUser.email,
           displayName: slackUser.name,
           slackUserId,
+          ...(shouldBeAdmin ? { isAdmin: true } : {}),
         },
         create: {
-          authentikId: slackUser.sub,   // reuse the sub field as the stable ID
+          authentikId: slackUser.sub,
           email: slackUser.email,
           displayName: slackUser.name,
           slackUserId,
-          certifications: [],           // admin assigns these in the DB
+          certifications: [],
+          isAdmin: shouldBeAdmin,
         },
       });
 
@@ -130,6 +138,7 @@ export async function registerSlackOAuthRoutes(fastify: FastifyInstance): Promis
       };
 
       req.session.user = sessionUser;
+      (req.session as unknown as Record<string, unknown>)['isAdmin'] = dbUser.isAdmin;
       const returnTo = req.session.returnTo ?? env.WEB_PUBLIC_URL;
       delete req.session.returnTo;
       reply.redirect(returnTo);

@@ -1,4 +1,4 @@
-import type { AuthClaims } from '@mn-ire/shared';
+import type { AuthClaims } from '@makenashville/shared';
 
 /** Shape stored in the session — identical regardless of provider. */
 export interface SessionUser extends AuthClaims {}

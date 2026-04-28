@@ -8,8 +8,8 @@ import {
   InlineNotification,
 } from '@carbon/react';
 import { Link } from 'react-router-dom';
-import type { WhosInEntry } from '@mn-ire/shared';
-import { resourceStatusIntent } from '@mn-ire/shared';
+import type { WhosInEntry } from '@makenashville/shared';
+import { resourceStatusIntent } from '@makenashville/shared';
 
 interface ShopSummary {
   id: string;

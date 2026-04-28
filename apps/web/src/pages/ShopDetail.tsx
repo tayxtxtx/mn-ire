@@ -11,7 +11,7 @@ import {
   BreadcrumbItem,
   InlineNotification,
 } from '@carbon/react';
-import { resourceStatusIntent } from '@mn-ire/shared';
+import { resourceStatusIntent } from '@makenashville/shared';
 
 interface ResourceDetail {
   id: string;

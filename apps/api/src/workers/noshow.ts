@@ -7,8 +7,8 @@
  * DMs the member, and posts a guild alert.
  */
 import { Queue, Worker, type Job } from 'bullmq';
-import { prisma } from '@mn-ire/db';
-import { BOOKING_POLICY } from '@mn-ire/shared';
+import { prisma } from '@makenashville/db';
+import { BOOKING_POLICY } from '@makenashville/shared';
 import { markNoShow } from '../services/booking.js';
 import { env } from '../env.js';
 

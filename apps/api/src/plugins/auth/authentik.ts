@@ -8,6 +8,10 @@ import { Issuer } from 'openid-client';
 import { env } from '../../env.js';
 import type { SessionUser } from './types.js';
 
+function getAdminEmails(fastify: FastifyInstance): Set<string> {
+  return ((fastify as unknown as Record<string, unknown>)['_adminEmails'] as Set<string>) ?? new Set();
+}
+
 export async function registerAuthentikRoutes(fastify: FastifyInstance): Promise<void> {
   const issuer = await Issuer.discover(env.AUTHENTIK_ISSUER_URL);
   const client = new issuer.Client({
@@ -42,18 +46,28 @@ export async function registerAuthentikRoutes(fastify: FastifyInstance): Promise
         certifications,
       };
 
-      await fastify.prisma.user.upsert({
+      const adminEmails = getAdminEmails(fastify);
+      const shouldBeAdmin = adminEmails.has(user.email);
+
+      const dbUser = await fastify.prisma.user.upsert({
         where: { authentikId: user.sub },
-        update: { email: user.email, displayName: user.name, certifications },
+        update: {
+          email: user.email,
+          displayName: user.name,
+          certifications,
+          ...(shouldBeAdmin ? { isAdmin: true } : {}),
+        },
         create: {
           authentikId: user.sub,
           email: user.email,
           displayName: user.name,
           certifications,
+          isAdmin: shouldBeAdmin,
         },
       });
 
       req.session.user = user;
+      (req.session as unknown as Record<string, unknown>)['isAdmin'] = dbUser.isAdmin;
       const returnTo = req.session.returnTo ?? env.WEB_PUBLIC_URL;
       delete req.session.returnTo;
       reply.redirect(returnTo);

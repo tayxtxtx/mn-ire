@@ -41,6 +41,8 @@ model User {
   /// Denormalized snapshot of Authentik cert scopes, refreshed on every login.
   /// Used for fast authorization checks without re-fetching the OIDC token.
   certifications String[]
+  /// Grants access to the admin console. Set manually or auto-promoted via ADMIN_EMAILS env.
+  isAdmin        Boolean  @default(false)
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt

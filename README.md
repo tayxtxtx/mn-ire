@@ -1,450 +1,250 @@
-# MN-IRE — Make Nashville Integrated Resource Ecosystem
+# MakeNashville Booking System
 
-A mission-critical reservation and resource management system for a 12,000 sq ft makerspace. Built for real-time visibility, safety enforcement, and zero double-bookings.
-
----
-
-## Features
-
-### Booking Engine
-- **7-day rolling window** — members can only book within the coming week
-- **Cooldown enforcement** for high-demand tools (CNC router, laser cutters): 4-hour gap between sessions from the same member
-- **Atomic overlap prevention** via PostgreSQL serializable transactions — two members clicking "Book" simultaneously will never double-book the same slot
-- **Availability timeline** endpoint for building calendar UIs
-
-### Identity Provider (switchable)
-
-MN-IRE supports two login providers, selected via `AUTH_PROVIDER` in `.env`. You can switch between them without changing any application code.
-
-| Provider | `AUTH_PROVIDER` | Cert source |
-|---|---|---|
-| **Authentik** (default) | `authentik` | Extracted from OIDC token custom scopes on every login |
-| **Sign in with Slack** | `slack` | Managed directly in the DB by an admin |
-
-### Safety Certification Gating
-- Booking attempts are rejected with a 403 if the member lacks any required cert for that resource — no client-side trust
-- With Authentik: certs come from token scopes (`woodshop_basic`, `cnc_advanced`, `laser_certified`, etc.) and are re-synced to the DB on every login
-- With Slack login: certs are assigned by an admin in Prisma Studio (or a future admin UI) and persist until changed
-
-### "Who's In" Dashboard
-- Real-time view of every active session: member name, machine, minutes remaining
-- Rendered on both the web dashboard and the kiosk home screen
-- Auto-refreshes every 30 seconds on the kiosk
-
-### Google Calendar Sync (Bidirectional)
-- Every confirmed booking is pushed to the shop's Google Calendar as an event
-- Incremental inbound sync via `syncToken` — only changed events are fetched (no full scan per cycle)
-- **Loop prevention**: all MN-IRE events are stamped with `extendedProperties.private.mnUid = "mn-booking-{id}"`. The inbound watcher skips any event carrying that prefix — no infinite update loops possible
-- Sync runs every 60 seconds; if a `syncToken` expires (HTTP 410), the service falls back to a full sync automatically
-
-### Slack Bot (Socket Mode)
-- **Booking confirmed** → DM to the member with resource, time, and booking ID
-- **High-demand tool booked** → guild alert posted to the shop's captain channel (e.g. `#cnc-captains`)
-- **No-show logic** → if a member hasn't checked in within 15 minutes of their start time, the slot is released, the member is DM'd, and the guild is notified
-- **Booking cancelled** → DM to member; slot-released alert to guild if high-demand
-- **Check-in confirmed** → DM to member with session end time
-- `/mnire-status` slash command for a quick health check from Slack
-
-### Kiosk Mode (Raspberry Pi 5)
-- Persistent **Device Authorization Grant** (RFC 8628) — the kiosk displays a code + QR; the member authenticates on their phone
-- All touch targets are a minimum of 64 px — glove-friendly
-- Check-in screen shows only the member's upcoming confirmed bookings
-- Read-only "Who's In" view updates automatically
-
-### Web Dashboard (IBM Carbon Design System)
-- **Facility Overview** — F-pattern layout: stat bar → "Who's In" sidebar → shop card grid with per-resource status tags
-- **Shop Detail** — resource cards with certification requirements, session limits, and live status
-- **My Bookings** — tabular history with cancel action on upcoming bookings
-- High-contrast `g100` dark theme; IBM Plex Sans; semantic color coding (green = available/success, blue = in-progress, red = failed/maintenance)
+A full-stack resource reservation platform for a 12,000 sq ft makerspace. Members book equipment, check in on arrival, and a no-show timer automatically releases unused slots. Staff get an admin console, and a TV-friendly status screen shows live facility state.
 
 ---
 
-## Tech Stack
+## Feature Overview
 
-| Layer | Technology |
+| Feature | Description |
 |---|---|
-| API | Node.js 20 · Fastify 4 · TypeScript |
-| Database | PostgreSQL 16 · Prisma ORM |
-| Cache / Queue | Redis 7 · BullMQ |
-| Identity | Authentik (OIDC) |
-| Calendar | Google Calendar API v3 |
-| Messaging | Slack Bolt SDK (Socket Mode) |
-| Web / Kiosk UI | React 18 · Vite · IBM Carbon Design System |
-| Monorepo | pnpm workspaces · Turborepo |
+| **Resource booking** | Members book any certified resource up to 7 days out (configurable per resource) |
+| **Certification gating** | Resources require specific certifications; certs are sourced from Authentik scopes or managed in the DB |
+| **No-show protection** | Bookings auto-cancelled 15 min after start time if not checked in; DM + guild channel notification sent |
+| **Cooldown enforcement** | High-demand resources (CNC, Laser) enforce a 4-hour cooldown after each session |
+| **Google Calendar sync** | Bidirectional sync per shop calendar; loop prevention via `mn-booking-` UID prefix |
+| **Slack bot** | Booking / cancellation / check-in / no-show notifications to the relevant guild channel |
+| **Admin console** | Paginated booking table with status/date/resource filters; inline edit and force-cancel; user admin promotion |
+| **Status screen** | Full-bleed TV display — green (available), yellow (reserved soon), red (occupied), orange (maintenance/down) |
+| **Switchable identity provider** | `AUTH_PROVIDER=authentik` (OIDC with cert scopes) or `AUTH_PROVIDER=slack` (Sign in with Slack) |
+| **Kiosk mode** | Tablet-friendly check-in UI (Device Authorization Grant or RFID keyboard emulation) |
 
 ---
 
-## Repository Layout
+## Architecture
 
 ```
-mn-ire/
-├── apps/
-│   ├── api/          # Fastify API — port 4000
-│   ├── web/          # Member web dashboard — port 5173
-│   └── kiosk/        # Touchscreen kiosk — port 5174
-├── packages/
-│   ├── db/           # Prisma schema, migrations, seed
-│   ├── shared/       # Constants, DTOs, type helpers (used by all apps)
-│   └── tsconfig/     # Shared TypeScript configs
-├── docker-compose.yml
-└── .env.example
+apps/
+  api/       Fastify 4 + TypeScript — REST API, auth, workers  (port 4000)
+  web/       Vite + React 18 + IBM Carbon — member portal      (port 5173)
+  kiosk/     Vite + React 18 + IBM Carbon — check-in kiosk     (port 5174)
+  status/    Vite + React 18 — TV status board                 (port 5175)
+packages/
+  db/        Prisma schema + generated client
+  shared/    Constants, enums, shared TS types
+  tsconfig/  Base TypeScript configs
 ```
 
----
-
-## Self-Hosting
-
-### Prerequisites
-
-| Tool | Minimum version |
-|---|---|
-| Node.js | 20.11.0 |
-| pnpm | 9.x |
-| Docker + Docker Compose | 24.x |
-| GitHub CLI (`gh`) | optional, for deploy scripts |
+**Stack:** Node 20, Fastify 4, Prisma + PostgreSQL 16, Redis 7, BullMQ, Slack Bolt (Socket Mode), Google Calendar API v3, IBM Carbon Design System, pnpm workspaces + Turborepo.
 
 ---
 
-### 1. Clone and install
+## Prerequisites
+
+- Node 20 (`nvm use` reads `.nvmrc`)
+- pnpm 9 — `npm i -g pnpm`
+- Docker (for local Postgres + Redis)
+
+---
+
+## Quick Start
+
+### 1. Install dependencies
 
 ```bash
-git clone https://github.com/<your-org>/mn-ire.git
-cd mn-ire
 pnpm install
 ```
 
----
-
-### 2. Configure environment variables
-
-```bash
-cp .env.example .env
-```
-
-Open `.env` and fill in each section. The table below shows which variables are required for the system to start versus optional integrations.
-
-**Always required:**
-
-| Variable | Notes |
-|---|---|
-| `DATABASE_URL` | PostgreSQL connection string |
-| `REDIS_URL` | Redis connection string |
-| `SESSION_SECRET` | Min 32 characters — generate with `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` |
-| `AUTH_PROVIDER` | `authentik` (default) or `slack` |
-
-**Required when `AUTH_PROVIDER=authentik`:**
-
-| Variable | Notes |
-|---|---|
-| `AUTHENTIK_ISSUER_URL` | e.g. `https://auth.example.org/application/o/mn-ire/` |
-| `AUTHENTIK_CLIENT_ID` | From the Authentik provider detail page |
-| `AUTHENTIK_CLIENT_SECRET` | From the Authentik provider detail page |
-| `AUTHENTIK_REDIRECT_URI` | Must match redirect URI registered in Authentik |
-
-**Required when `AUTH_PROVIDER=slack`:**
-
-| Variable | Notes |
-|---|---|
-| `SLACK_CLIENT_ID` | From your Slack app's Basic Information page |
-| `SLACK_CLIENT_SECRET` | From your Slack app's Basic Information page |
-| `SLACK_REDIRECT_URI` | e.g. `https://your-domain:4000/auth/callback` |
-
-**Optional integrations (disabled when omitted):**
-
-| Variable | Notes |
-|---|---|
-| `GOOGLE_CALENDAR_CLIENT_ID` | GCal sync disabled if omitted |
-| `GOOGLE_CALENDAR_CLIENT_SECRET` | GCal sync disabled if omitted |
-| `GOOGLE_CALENDAR_REFRESH_TOKEN` | GCal sync disabled if omitted |
-| `SLACK_BOT_TOKEN` | Slack notifications disabled if omitted |
-| `SLACK_APP_TOKEN` | Slack notifications disabled if omitted |
-| `SLACK_SIGNING_SECRET` | Slack notifications disabled if omitted |
-
----
-
-### 3. Start infrastructure
+### 2. Start Postgres and Redis
 
 ```bash
 docker compose up -d
 ```
 
-This starts PostgreSQL 16 and Redis 7 with persistent volumes. Healthchecks are configured — both containers must report healthy before the API will connect successfully.
+### 3. Configure environment
 
----
+```bash
+cp .env.example .env
+# edit .env — see the sections below for each feature
+```
 
 ### 4. Run database migrations and seed
 
 ```bash
-pnpm db:migrate   # applies schema to Postgres
-pnpm db:seed      # creates shops, resources, and a demo member
+pnpm db:migrate   # applies all Prisma migrations
+pnpm db:seed      # seeds 5 shops, demo resources, and a demo user
 ```
 
-To browse the database with a GUI:
+### 5. Choose your identity provider
 
-```bash
-pnpm db:studio    # opens Prisma Studio at http://localhost:5555
+#### Option A — Authentik OIDC (default)
+
+1. In Authentik, create an **OAuth2/OpenID Provider** for the booking system.
+2. Add a custom property mapping that includes certification scopes in the token (e.g. `woodshop_basic metal_lathe cnc_advanced`).
+3. Set in `.env`:
+
+```env
+AUTH_PROVIDER=authentik
+AUTHENTIK_ISSUER_URL=https://auth.yourdomain.org/application/o/booking/
+AUTHENTIK_CLIENT_ID=<client-id>
+AUTHENTIK_CLIENT_SECRET=<client-secret>
+AUTHENTIK_REDIRECT_URI=http://localhost:5173/auth/callback
+AUTHENTIK_CERT_SCOPES=woodshop_basic,woodshop_advanced,metal_lathe,metal_mill,cnc_basic,cnc_advanced,laser_certified,3dprint_basic,welding_mig,welding_tig,electronics_basic
 ```
 
----
+#### Option B — Sign in with Slack
 
-### 5. Set up identity provider
-
-Choose **one** of the following options and set `AUTH_PROVIDER` accordingly.
-
----
-
-#### Option A — Authentik (`AUTH_PROVIDER=authentik`)
-
-Authentik is the full-featured option. Certifications are embedded in the OIDC token as custom scopes, so they're enforced automatically at login without any manual DB editing.
-
-1. Deploy Authentik (see [Authentik docs](https://docs.goauthentik.io/docs/installation/docker-compose)) or use an existing instance.
-2. Create an **OAuth2/OpenID Provider** with:
-   - **Redirect URI**: `https://your-domain/auth/callback`
-   - **Scopes**: `openid profile email` plus one scope per certification (e.g. `woodshop_basic`, `laser_certified`)
-3. For each certification scope, create a **Scope Mapping** under **Customization → Property Mappings**:
-   ```python
-   # Example: woodshop_basic mapping
-   return {"woodshop_basic": True}
-   ```
-   Assign the mapping to the provider's allowed scopes.
-4. Create an **Application** backed by that provider. Copy the **Client ID** and **Client Secret** into `.env`.
-5. Assign certifications to members by editing their user profile and granting the relevant scope mappings.
-6. Set in `.env`:
-   ```
-   AUTH_PROVIDER=authentik
-   AUTHENTIK_ISSUER_URL=https://auth.your-domain/application/o/mn-ire/
-   AUTHENTIK_CLIENT_ID=<client id>
-   AUTHENTIK_CLIENT_SECRET=<client secret>
-   AUTHENTIK_REDIRECT_URI=https://your-domain/auth/callback
-   ```
-
----
-
-#### Option B — Sign in with Slack (`AUTH_PROVIDER=slack`)
-
-The simpler option if your team already lives in Slack. No separate auth server to run. Certifications are **not** carried in the Slack token — an admin assigns them directly in Prisma Studio (or a future admin UI) after the member's first login.
-
-1. Go to [api.slack.com/apps](https://api.slack.com/apps) → **Create New App → From scratch**.
-2. Under **Features → OAuth & Permissions**:
-   - Add redirect URL: `https://your-domain:4000/auth/callback`
-   - Add **User Token Scopes**: `openid`, `profile`, `email`
-3. Under **Settings → Manage Distribution → Sign in with Slack** — enable it.
-4. Copy **Basic Information → App Credentials → Client ID** and **Client Secret**.
+1. Create a Slack app at [api.slack.com/apps](https://api.slack.com/apps).
+2. Under **OAuth & Permissions**, add scopes: `openid profile email`.
+3. Enable **Sign in with Slack** (OpenID Connect).
+4. Add `http://localhost:4000/auth/callback` to Redirect URLs.
 5. Set in `.env`:
-   ```
-   AUTH_PROVIDER=slack
-   SLACK_CLIENT_ID=<client id>
-   SLACK_CLIENT_SECRET=<client secret>
-   SLACK_REDIRECT_URI=https://your-domain:4000/auth/callback
-   ```
-6. After a member logs in for the first time, open Prisma Studio (`pnpm db:studio`), find their `User` row, and set their `certifications` array (e.g. `["woodshop_basic", "laser_certified"]`).
 
-> **Note:** The Slack bot (notifications, guild alerts, no-show DMs) uses a separate bot token and works independently of whichever login provider you choose. See step 7 for bot setup.
+```env
+AUTH_PROVIDER=slack
+SLACK_CLIENT_ID=<client-id>
+SLACK_CLIENT_SECRET=<client-secret>
+SLACK_REDIRECT_URI=http://localhost:4000/auth/callback
+```
 
----
+> **Switching providers** — change `AUTH_PROVIDER` and restart the API. Existing user accounts are matched by email, so members keep their booking history regardless of which provider they log in with.
 
-### 6. Set up Google Calendar (optional)
+### 6. Set up admin access
 
-1. Create a Google Cloud project and enable the **Google Calendar API**.
-2. Create an **OAuth 2.0 Client ID** (type: Web application). Set the redirect URI to `https://your-domain:4000/oauth2callback`.
-3. Run the token exchange once to get a refresh token:
+```env
+ADMIN_EMAILS=you@example.com,otherperson@example.com
+```
 
-   ```bash
-   # Step 1 — get the authorization URL
-   node -e "
-   const {google} = require('googleapis');
-   const c = new google.auth.OAuth2('CLIENT_ID','CLIENT_SECRET','https://your-domain:4000/oauth2callback');
-   console.log(c.generateAuthUrl({access_type:'offline',scope:['https://www.googleapis.com/auth/calendar'],prompt:'consent'}));
-   "
+Any email in this list gets `isAdmin = true` automatically on first login. After that, admin status can be managed from the admin console (`PATCH /api/admin/users/:id`) — you no longer need to keep the email in this list.
 
-   # Step 2 — exchange the code from the redirect URL
-   node -e "
-   const {google} = require('googleapis');
-   const c = new google.auth.OAuth2('CLIENT_ID','CLIENT_SECRET','https://your-domain:4000/oauth2callback');
-   c.getToken('CODE_FROM_URL').then(r => console.log(r.tokens));
-   "
-   ```
-
-4. Paste the `refresh_token` into `.env`.
-5. In Prisma Studio, set `gcalCalendarId` on each `Shop` row to the corresponding Google Calendar ID (found under **Calendar Settings → Integrate calendar → Calendar ID**).
-
----
-
-### 7. Set up Slack (optional)
-
-1. Create a new app at [api.slack.com/apps](https://api.slack.com/apps).
-2. **Settings → Socket Mode** → Enable, create an App-Level Token with scope `connections:write`.
-3. **OAuth & Permissions → Bot Token Scopes**: add `chat:write`, `im:write`, `commands`.
-4. **Install to Workspace** and copy the bot token.
-5. Copy **Basic Information → Signing Secret**.
-6. Fill in `SLACK_BOT_TOKEN`, `SLACK_APP_TOKEN`, and `SLACK_SIGNING_SECRET` in `.env`.
-7. For DMs to work, populate `slackUserId` on each `User` row (the member's Slack member ID, format `U01ABC123`). Members can find this in Slack: **Profile → ⋮ → Copy member ID**.
-
----
-
-### 8. Run in development
+### 7. Start the development servers
 
 ```bash
 pnpm dev
 ```
 
-Starts all three apps in parallel with hot-reload:
-
 | App | URL |
 |---|---|
-| API | `http://localhost:4000` |
-| Web dashboard | `http://localhost:5173` |
-| Kiosk | `http://localhost:5174` |
+| Member portal | http://localhost:5173 |
+| API | http://localhost:4000 |
+| Kiosk | http://localhost:5174 |
+| Status screen | http://localhost:5175 |
 
 ---
 
-### 9. Run in production
+## Status Screen
 
-#### Option A — systemd on a Linux VPS
+The status screen (`apps/status`) is a standalone Vite app with no login requirement — mount it on any TV or monitor connected to a browser.
 
-Build all apps:
+**Four states per resource card:**
 
-```bash
-pnpm build
+| State | Background | Text | Condition |
+|---|---|---|---|
+| Available | Green `#24A148` | White | No active session, no upcoming booking |
+| Reserved soon | Yellow `#F1C21B` | Black | A confirmed booking starts within 60 minutes |
+| Occupied | Red `#DA1E28` | White | A member is currently checked in |
+| Down / Maintenance | Orange `#FF6D00` | Black | Resource set to MAINTENANCE, or API unreachable |
+
+Cards auto-size in a responsive grid (2 columns ≤ 4 resources, 3 columns ≤ 9, 4 columns for larger sets).
+
+**Test mode** — append `?test` to the URL to render all four states with mock data, no API required:
+
+```
+http://localhost:5175?test
 ```
 
-Create a systemd unit for the API (`/etc/systemd/system/mn-ire-api.service`):
+This uses the data in [`apps/status/src/mockData.ts`](apps/status/src/mockData.ts). Delete that file and the import in `App.tsx` when you no longer need it.
 
-```ini
-[Unit]
-Description=MN-IRE API
-After=network.target postgresql.service redis.service
+---
 
-[Service]
-Type=simple
-User=mnire
-WorkingDirectory=/opt/mn-ire/apps/api
-EnvironmentFile=/opt/mn-ire/.env
-ExecStart=/usr/bin/node dist/index.js
-Restart=on-failure
-RestartSec=5
+## Admin Console
 
-[Install]
-WantedBy=multi-user.target
-```
+The admin console is accessible at `/admin` in the member portal for any user with `isAdmin = true`.
 
-```bash
-sudo systemctl enable --now mn-ire-api
-```
+**Capabilities:**
 
-Serve the web and kiosk builds as static files via Nginx (see sample config below).
+- **Booking table** — paginated list of all bookings across all resources; filterable by status, resource, shop, user, and date range.
+- **Edit booking** — change booking status or reschedule start/end times (overlap check enforced).
+- **Force-cancel** — cancel any booking regardless of state.
+- **Maintenance toggle** — put any resource in/out of MAINTENANCE from the resource detail page.
+- **User management** — promote or demote admin status via `PATCH /api/admin/users/:id`.
 
-#### Option B — Docker Compose (all-in-one)
+---
 
-Add a `Dockerfile` to `apps/api` and extend `docker-compose.yml` with an `api`, `web`, and `kiosk` service. The infrastructure services (`postgres`, `redis`) are already defined.
+## Google Calendar Sync
 
-#### Nginx sample config
+Each shop has an optional `gcalCalendarId` field in the database. When populated, the API:
 
-```nginx
-# Web dashboard
-server {
-    listen 443 ssl;
-    server_name mn-ire.makenashville.org;
+1. **Creates** a GCal event when a booking is confirmed, stamping `extendedProperties.private.mnUid = mn-booking-{id}`.
+2. **Polls** each calendar every 60 seconds via incremental sync tokens.
+3. **Ignores** any incoming GCal change whose `mnUid` starts with `mn-booking-` — this prevents infinite sync loops.
+4. **Recovers** from stale sync tokens (HTTP 410 Gone) by performing a full re-sync.
 
-    root /opt/mn-ire/apps/web/dist;
-    index index.html;
+Set credentials in `.env`:
 
-    # SPA fallback
-    location / { try_files $uri $uri/ /index.html; }
-
-    # Proxy API and auth to Fastify
-    location ~ ^/(api|auth|health) {
-        proxy_pass http://127.0.0.1:4000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-    }
-}
-
-# Kiosk (Raspberry Pi devices hit this from the LAN)
-server {
-    listen 443 ssl;
-    server_name kiosk.makenashville.org;
-
-    root /opt/mn-ire/apps/kiosk/dist;
-    index index.html;
-
-    location / { try_files $uri $uri/ /index.html; }
-
-    location ~ ^/(api|auth|health) {
-        proxy_pass http://127.0.0.1:4000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-    }
-}
+```env
+GOOGLE_CALENDAR_CLIENT_ID=
+GOOGLE_CALENDAR_CLIENT_SECRET=
+GOOGLE_CALENDAR_REFRESH_TOKEN=
 ```
 
 ---
 
-### 10. Kiosk device setup (Raspberry Pi 5)
+## Slack Bot
 
-1. Install Raspberry Pi OS (64-bit, desktop).
-2. Install Chromium and set it to launch in kiosk mode on boot:
+The bot runs in Socket Mode (no inbound webhook required). Set credentials in `.env`:
 
-   ```bash
-   # /etc/xdg/autostart/kiosk.desktop
-   [Desktop Entry]
-   Type=Application
-   Name=MN-IRE Kiosk
-   Exec=chromium-browser --kiosk --noerrdialogs --disable-infobars \
-        --touch-events=enabled https://kiosk.makenashville.org
-   ```
-
-3. Disable screen saver and power management:
-
-   ```bash
-   sudo raspi-config
-   # Display Options → Screen Blanking → Disable
-   ```
-
-4. The kiosk boots directly into the Device Code Flow screen. Members scan the QR code with their phone to authenticate — no keyboard needed.
-
-#### Optional: RFID check-in
-
-Connect a USB RFID reader (HID keyboard emulation mode). The reader types the member's ID as keystrokes. Wire a `/api/checkin/rfid` endpoint that maps the scanned ID to a `User` and calls `checkInBooking` — the kiosk screen then auto-advances to the confirmed state.
-
----
-
-## Useful Commands
-
-```bash
-# Development
-pnpm dev                  # start all apps with hot-reload
-pnpm typecheck            # type-check all packages
-pnpm db:studio            # open Prisma GUI at :5555
-
-# Database
-pnpm db:migrate           # apply pending migrations
-pnpm db:seed              # seed shops, resources, demo user
-pnpm db:generate          # regenerate Prisma client after schema changes
-
-# Infrastructure
-docker compose up -d      # start Postgres + Redis
-docker compose down       # stop
-docker compose logs -f    # follow logs
-
-# Production
-pnpm build                # build all apps to dist/
+```env
+SLACK_BOT_TOKEN=xoxb-...
+SLACK_APP_TOKEN=xapp-...
+SLACK_SIGNING_SECRET=...
+SLACK_GUILD_CHANNELS=woodshop=#woodshop-captains,metalshop=#metal-captains,cnc=#cnc-captains,laser=#laser-captains,electronics=#electronics-captains
 ```
 
+**Notifications sent:**
+
+| Event | Channel |
+|---|---|
+| Booking created | Guild channel for the resource's shop |
+| Booking cancelled | Guild channel |
+| Member checked in | Guild channel |
+| No-show detected | Guild channel + DM to the member |
+
 ---
 
-## Booking Policy Defaults
+## Booking Rules
 
-All policy values are overrideable per-resource in the database and configurable via environment variables.
-
-| Policy | Default | Env variable |
+| Rule | Default | Override |
 |---|---|---|
-| Booking window | 7 days | `DEFAULT_BOOKING_WINDOW_DAYS` |
-| No-show grace period | 15 min | `DEFAULT_NO_SHOW_GRACE_MINUTES` |
-| High-demand cooldown | 4 hours | `HIGH_DEMAND_COOLDOWN_HOURS` |
+| Booking window | 7 days ahead | `bookingWindowDays` per resource |
+| No-show grace period | 15 min after start | `DEFAULT_NO_SHOW_GRACE_MINUTES` env var |
+| High-demand cooldown | 4 hours between sessions | `cooldownHours` per resource |
+| Session length | Unlimited | No cap — set by member's chosen end time |
+
+Certification requirements are stored per resource (`requiredCertifications` string array). A member's certifications are either parsed from Authentik OIDC scopes on login or managed manually in the DB when using Slack login.
 
 ---
 
-## License
+## Production Deployment
 
-UNLICENSED — internal tool for Make Nashville. Not for redistribution.
+1. Set `NODE_ENV=production` and generate a strong `SESSION_SECRET`.
+2. Point `DATABASE_URL` and `REDIS_URL` at your production instances.
+3. Build all apps: `pnpm build`.
+4. Run the API: `node apps/api/dist/index.js`.
+5. Serve `apps/web/dist`, `apps/kiosk/dist`, and `apps/status/dist` from your static host or reverse proxy.
+6. Set `API_PUBLIC_URL`, `WEB_PUBLIC_URL`, `KIOSK_PUBLIC_URL` to your production URLs.
+7. Update all `*_REDIRECT_URI` env vars to match production URLs.
+
+---
+
+## Development Commands
+
+```bash
+pnpm dev              # start all apps in parallel (watch mode)
+pnpm build            # production build for all apps
+pnpm typecheck        # type-check all packages
+pnpm db:migrate       # apply Prisma migrations
+pnpm db:seed          # seed demo data
+pnpm db:generate      # regenerate Prisma client after schema changes
+pnpm db:studio        # open Prisma Studio
+```
