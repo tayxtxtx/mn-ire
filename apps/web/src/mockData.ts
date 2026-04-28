@@ -151,3 +151,57 @@ export const MOCK_ADMIN_BOOKINGS: { data: AdminBooking[]; meta: { total: number 
   ],
   meta: { total: 7 },
 };
+
+// ── Admin shops — used by AdminShops page ─────────────────────────────────────
+export type AdminResource = {
+  id: string; shopId: string; name: string; description: string | null;
+  requiredCertifications: string[];
+  cooldownHours: number; isHighDemand: boolean;
+  bookingWindowDays: number; showOnKiosk: boolean;
+  status: 'AVAILABLE' | 'IN_USE' | 'MAINTENANCE';
+};
+export type AdminShop = {
+  id: string; name: string; slug: string; description: string | null;
+  guildSlackChannel: string | null; gcalCalendarId: string | null;
+  resources: AdminResource[];
+};
+
+export const MOCK_ADMIN_SHOPS: AdminShop[] = [
+  {
+    id: 'shop-woodshop', name: 'Wood Shop', slug: 'woodshop',
+    description: 'Table saw, band saw, lathe, planer, and jointer.',
+    guildSlackChannel: '#woodshop-captains', gcalCalendarId: null,
+    resources: [
+      { id: 'r-tablesw', shopId: 'shop-woodshop', name: 'Table Saw',  description: 'SawStop contractor saw.',        requiredCertifications: ['woodshop_basic'],    cooldownHours: 0, isHighDemand: false, bookingWindowDays: 7, showOnKiosk: true, status: 'AVAILABLE'   },
+      { id: 'r-bandsaw', shopId: 'shop-woodshop', name: 'Band Saw',   description: '14" Jet band saw.',              requiredCertifications: ['woodshop_basic'],    cooldownHours: 0, isHighDemand: false, bookingWindowDays: 7, showOnKiosk: true, status: 'IN_USE'      },
+      { id: 'r-lathe',   shopId: 'shop-woodshop', name: 'Wood Lathe', description: 'Variable speed wood lathe.',    requiredCertifications: ['woodshop_advanced'], cooldownHours: 0, isHighDemand: false, bookingWindowDays: 7, showOnKiosk: true, status: 'MAINTENANCE' },
+    ],
+  },
+  {
+    id: 'shop-metalshop', name: 'Metal Shop', slug: 'metalshop',
+    description: 'MIG/TIG welding, metal lathe, and mill.',
+    guildSlackChannel: '#metal-captains', gcalCalendarId: null,
+    resources: [
+      { id: 'r-mig', shopId: 'shop-metalshop', name: 'MIG Welder', description: 'Lincoln Electric MIG.', requiredCertifications: ['welding_mig'], cooldownHours: 0, isHighDemand: false, bookingWindowDays: 7, showOnKiosk: true, status: 'AVAILABLE' },
+      { id: 'r-tig', shopId: 'shop-metalshop', name: 'TIG Welder', description: 'Miller TIG welder.',    requiredCertifications: ['welding_tig'], cooldownHours: 0, isHighDemand: false, bookingWindowDays: 7, showOnKiosk: true, status: 'IN_USE'    },
+    ],
+  },
+  {
+    id: 'shop-cnc', name: 'CNC / Laser', slug: 'cnc',
+    description: 'CNC router and 60W CO₂ laser cutter.',
+    guildSlackChannel: '#cnc-captains', gcalCalendarId: null,
+    resources: [
+      { id: 'r-cnc',   shopId: 'shop-cnc', name: 'CNC Router',   description: '4×4 ShopBot.',                requiredCertifications: ['cnc_basic'],      cooldownHours: 4, isHighDemand: true, bookingWindowDays: 7, showOnKiosk: true, status: 'IN_USE'    },
+      { id: 'r-laser', shopId: 'shop-cnc', name: 'Laser Cutter', description: '60W Epilog Helix.',           requiredCertifications: ['laser_certified'], cooldownHours: 4, isHighDemand: true, bookingWindowDays: 7, showOnKiosk: true, status: 'AVAILABLE' },
+    ],
+  },
+  {
+    id: 'shop-electronics', name: 'Electronics Lab', slug: 'electronics',
+    description: 'Oscilloscopes, soldering stations, and 3D printers.',
+    guildSlackChannel: null, gcalCalendarId: null,
+    resources: [
+      { id: 'r-solder',  shopId: 'shop-electronics', name: 'Soldering Station', description: 'Hakko FX-888D.',         requiredCertifications: ['electronics_basic'], cooldownHours: 0, isHighDemand: false, bookingWindowDays: 7, showOnKiosk: true, status: 'AVAILABLE' },
+      { id: 'r-3dprint', shopId: 'shop-electronics', name: '3D Printer',        description: 'Prusa MK4.',             requiredCertifications: ['3dprint_basic'],    cooldownHours: 0, isHighDemand: false, bookingWindowDays: 7, showOnKiosk: true, status: 'AVAILABLE' },
+    ],
+  },
+];

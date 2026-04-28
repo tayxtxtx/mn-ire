@@ -132,6 +132,58 @@ pnpm dev
 
 ---
 
+## Pages & URLs
+
+### Member Portal (`http://localhost:5173`)
+
+| Page | URL | Who can access |
+|---|---|---|
+| Facility overview | `/` | All logged-in members |
+| Shop detail | `/shop/<slug>` | All logged-in members |
+| My bookings | `/my-bookings` | All logged-in members |
+| Admin — bookings | `/admin` | Users with `isAdmin = true` |
+| Admin — shops & resources | `/admin/shops` | Users with `isAdmin = true` |
+
+> Append `?test` to any URL (e.g. `http://localhost:5173?test`) to activate **test mode** — all pages render with mock data, no API or login required.
+
+### Kiosk (`http://localhost:5174`)
+
+| Page | URL | Notes |
+|---|---|---|
+| Walk-in sign-in | `/` | Public — no login required |
+| Reservation check-in | `/checkin` | Public — lists today's confirmed bookings |
+| Who's In | `/whos-in` | Public — shows all active sessions |
+| Active session | `/session` | Reached automatically after sign-in or check-in |
+
+> Append `?test` to activate test mode. The kiosk is designed to run on a locked-down tablet at the front desk.
+
+### Status Screen (`http://localhost:5175`)
+
+| URL | What it shows |
+|---|---|
+| `http://localhost:5175` | All shops and all resources |
+| `http://localhost:5175/<shop-slug>` | Single shop only (e.g. `/woodshop`) |
+| `http://localhost:5175?test` | All shops, mock data |
+| `http://localhost:5175/woodshop?test` | Single shop, mock data |
+
+Configure each TV or monitor to open `http://<your-status-host>/<shop-slug>` so it shows only the relevant shop. The page auto-refreshes every 30 seconds.
+
+### API (`http://localhost:4000`)
+
+| Endpoint group | Base path | Auth |
+|---|---|---|
+| Auth | `/auth/*` | — |
+| Member bookings | `/api/bookings/*` | Session cookie |
+| Shops / resources (read) | `/api/shops/*` | Session cookie |
+| Walk-in | `/api/walkin/*` | None (kiosk-trusted) |
+| Kiosk session | `/api/kiosk/*` | None (kiosk-trusted) |
+| Facility status | `/api/status` | None |
+| Who's In | `/api/admin/whos-in` | None |
+| Admin bookings | `/api/admin/bookings/*` | `isAdmin` required |
+| Admin shops & resources | `/api/admin/shops/*`, `/api/admin/resources/*` | `isAdmin` required |
+
+---
+
 ## Status Screen
 
 The status screen (`apps/status`) is a standalone Vite app with no login requirement — mount it on any TV or monitor connected to a browser.
@@ -166,6 +218,7 @@ The admin console is accessible at `/admin` in the member portal for any user wi
 - **Booking table** — paginated list of all bookings across all resources; filterable by status, resource, shop, user, and date range.
 - **Edit booking** — change booking status or reschedule start/end times (overlap check enforced).
 - **Force-cancel** — cancel any booking regardless of state.
+- **Shops & Resources** — create, edit, and delete shops; add and configure resources per shop (certifications required, cooldown, booking window, kiosk visibility).
 - **Maintenance toggle** — put any resource in/out of MAINTENANCE from the resource detail page.
 - **User management** — promote or demote admin status via `PATCH /api/admin/users/:id`.
 

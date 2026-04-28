@@ -11,6 +11,7 @@ import type { BookingStatus } from '@makenashville/shared';
 import { TEST_MODE, MOCK_ADMIN_BOOKINGS } from '../../mockData.js';  // DELETE with mockData.ts
 import { bookingStatusIntent } from '@makenashville/shared';
 import AdminBookingEditModal from './AdminBookingEditModal.js';
+import AdminNav from './AdminNav.js';
 
 const INTENT_TO_CARBON: Record<string, 'green' | 'blue' | 'red' | 'gray'> = {
   green: 'green', blue: 'blue', red: 'red', gray: 'gray',
@@ -125,6 +126,7 @@ export default function AdminBookings() {
   return (
     <Grid fullWidth>
       <Column lg={16} md={8} sm={4} style={{ paddingTop: '1rem', paddingBottom: '0.5rem' }}>
+        <AdminNav active="bookings" />
         <h1 style={{ fontFamily: 'IBM Plex Sans, sans-serif', fontSize: '1.5rem', fontWeight: 600 }}>
           All Bookings
         </h1>

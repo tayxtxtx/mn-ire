@@ -12,6 +12,7 @@ import shopsRoutes from './routes/shops.js';
 import bookingsRoutes from './routes/bookings.js';
 import adminRoutes from './routes/admin.js';
 import adminBookingsRoutes from './routes/adminBookings.js';
+import adminShopsRoutes from './routes/adminShops.js';
 import walkInRoutes from './routes/walkin.js';
 import kioskRoutes from './routes/kiosk.js';
 import { startGCalSyncScheduler } from './services/gcal.js';
@@ -69,6 +70,7 @@ await fastify.register(shopsRoutes);
 await fastify.register(bookingsRoutes);
 await fastify.register(adminRoutes);
 await fastify.register(adminBookingsRoutes);
+await fastify.register(adminShopsRoutes);
 await fastify.register(walkInRoutes);
 await fastify.register(kioskRoutes);
 
