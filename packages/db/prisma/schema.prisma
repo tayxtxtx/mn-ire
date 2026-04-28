@@ -115,6 +115,8 @@ model WalkIn {
   resource   Resource? @relation(fields: [resourceId], references: [id], onDelete: SetNull)
 
   signedInAt  DateTime  @default(now())
+  /// Expected end time; extended via the kiosk Extend button.
+  endsAt      DateTime?
   signedOutAt DateTime?
 
   @@index([signedInAt])

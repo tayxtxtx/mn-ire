@@ -12,6 +12,7 @@ import {
 import type { BookingDto } from '@makenashville/shared';
 import { TEST_MODE, MOCK_CONFIRMED_BOOKINGS } from '../mockData.js';  // DELETE with mockData.ts
 import { bookingStatusIntent } from '@makenashville/shared';
+import type { SessionState } from './ActiveSession.js';
 
 const INTENT_TO_CARBON: Record<string, 'green' | 'blue' | 'red' | 'gray'> = {
   green: 'green',
@@ -26,7 +27,6 @@ export default function CheckIn() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [checkingIn, setCheckingIn] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
 
   useEffect(() => {
     if (TEST_MODE) {
@@ -41,27 +41,37 @@ export default function CheckIn() {
       .finally(() => setLoading(false));
   }, []);
 
-  const checkIn = async (id: string, resourceName: string) => {
-    setCheckingIn(id);
+  const checkIn = async (b: BookingDto) => {
+    setCheckingIn(b.id);
     setError(null);
     if (TEST_MODE) {
       await new Promise((r) => setTimeout(r, 600));
-      setSuccess(`Checked in to ${resourceName}. Enjoy your session! (test mode)`);
-      setBookings((prev) => prev.filter((b) => b.id !== id));
-      setCheckingIn(null);
+      const sessionState: SessionState = {
+        type:         'booking',
+        id:           b.id,
+        name:         b.resourceName,
+        resourceName: b.resourceName,
+        endsAt:       b.endsAt,
+      };
+      navigate('/session', { state: sessionState });
       return;
     }
     try {
-      const res = await fetch(`/api/bookings/${id}/checkin`, {
+      const res = await fetch(`/api/bookings/${b.id}/checkin`, {
         method: 'POST',
         credentials: 'include',
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      setSuccess(`Checked in to ${resourceName}. Enjoy your session!`);
-      setBookings((prev) => prev.filter((b) => b.id !== id));
+      const sessionState: SessionState = {
+        type:         'booking',
+        id:           b.id,
+        name:         b.resourceName,
+        resourceName: b.resourceName,
+        endsAt:       b.endsAt,
+      };
+      navigate('/session', { state: sessionState });
     } catch {
       setError('Check-in failed. Please see the front desk.');
-    } finally {
       setCheckingIn(null);
     }
   };
@@ -95,19 +105,9 @@ export default function CheckIn() {
             style={{ marginBottom: '1rem' }}
           />
         )}
-        {success && (
-          <InlineNotification
-            kind="success"
-            title="Checked In"
-            subtitle={success}
-            hideCloseButton
-            style={{ marginBottom: '1rem' }}
-          />
-        )}
-
         {loading ? (
           <SkeletonText paragraph lineCount={6} />
-        ) : bookings.length === 0 && !success ? (
+        ) : bookings.length === 0 ? (
           <Tile style={{ textAlign: 'center', padding: '2rem' }}>
             <p style={{ fontSize: '1rem', marginBottom: '1.5rem' }}>
               No upcoming confirmed bookings found.
@@ -144,7 +144,7 @@ export default function CheckIn() {
                   </div>
                   <Button
                     size="xl"
-                    onClick={() => checkIn(b.id, b.resourceName)}
+                    onClick={() => checkIn(b)}
                     disabled={checkingIn === b.id}
                     style={{ minWidth: '160px' }}
                   >

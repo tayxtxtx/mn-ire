@@ -3,6 +3,7 @@ import { Theme } from '@carbon/react';
 import KioskHome from './pages/KioskHome.js';
 import CheckIn from './pages/CheckIn.js';
 import WhosIn from './pages/WhosIn.js';
+import ActiveSession from './pages/ActiveSession.js';
 
 export default function App() {
   return (
@@ -12,6 +13,7 @@ export default function App() {
         <Route path="/" element={<KioskHome />} />
         <Route path="/checkin" element={<CheckIn />} />
         <Route path="/whos-in" element={<WhosIn />} />
+        <Route path="/session" element={<ActiveSession />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Theme>

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Grid, Column, Tile, Button,
@@ -7,16 +7,13 @@ import {
   InlineNotification, InlineLoading,
 } from '@carbon/react';
 import { TEST_MODE, MOCK_RESOURCES } from '../mockData.js';  // DELETE with mockData.ts
+import type { SessionState } from './ActiveSession.js';
 
 interface KioskResource {
   id:   string;
   name: string;
   shop: { name: string };
 }
-
-type Screen = 'form' | 'success';
-
-const IDLE_RESET_MS = 8_000;  // auto-reset to form after 8 s on success screen
 
 export default function KioskHome() {
   const navigate = useNavigate();
@@ -39,22 +36,14 @@ export default function KioskHome() {
   const [passedOrientation, setPassedOrientation] = useState(false);
   const [resourceId,        setResourceId]        = useState('');
 
-  // ── Screen / submission state ──────────────────────────────────────────────
-  const [screen,      setScreen]      = useState<Screen>('form');
-  const [submitting,  setSubmitting]  = useState(false);
-  const [error,       setError]       = useState<string | null>(null);
-  const [successName, setSuccessName] = useState('');
-  const idleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // ── Submission state ───────────────────────────────────────────────────────
+  const [submitting, setSubmitting] = useState(false);
+  const [error,      setError]      = useState<string | null>(null);
 
   const resetForm = () => {
     setFirstName(''); setLastName(''); setEmail('');
     setPhone(''); setPassedOrientation(false); setResourceId('');
-    setError(null); setScreen('form');
-  };
-
-  const scheduleReset = () => {
-    if (idleTimer.current) clearTimeout(idleTimer.current);
-    idleTimer.current = setTimeout(resetForm, IDLE_RESET_MS);
+    setError(null);
   };
 
   const handleSubmit = async () => {
@@ -67,10 +56,14 @@ export default function KioskHome() {
 
     if (TEST_MODE) {
       await new Promise((r) => setTimeout(r, 500));
-      setSuccessName(firstName.trim());
-      setScreen('success');
-      setSubmitting(false);
-      scheduleReset();
+      const sessionState: SessionState = {
+        type:         'walkin',
+        id:           'mock-walkin-001',
+        name:         firstName.trim(),
+        resourceName: resourceId ? (resources.find((r) => r.id === resourceId)?.name ?? null) : null,
+        endsAt:       new Date(Date.now() + 120 * 60_000).toISOString(),
+      };
+      navigate('/session', { state: sessionState });
       return;
     }
 
@@ -90,46 +83,23 @@ export default function KioskHome() {
       if (!res.ok) {
         const err = await res.json() as { message?: string };
         setError(err.message ?? 'Sign-in failed. Please see the front desk.');
+        setSubmitting(false);
         return;
       }
-      setSuccessName(firstName.trim());
-      setScreen('success');
-      scheduleReset();
+      const data = await res.json() as { id: string; endsAt: string | null; resource?: { name: string } | null };
+      const sessionState: SessionState = {
+        type:         'walkin',
+        id:           data.id,
+        name:         firstName.trim(),
+        resourceName: data.resource?.name ?? (resourceId ? (resources.find((r) => r.id === resourceId)?.name ?? null) : null),
+        endsAt:       data.endsAt ?? new Date(Date.now() + 120 * 60_000).toISOString(),
+      };
+      navigate('/session', { state: sessionState });
     } catch {
       setError('Network error. Please see the front desk.');
-    } finally {
       setSubmitting(false);
     }
   };
-
-  // Clean up idle timer on unmount
-  useEffect(() => () => { if (idleTimer.current) clearTimeout(idleTimer.current); }, []);
-
-  // ── Success screen ─────────────────────────────────────────────────────────
-  if (screen === 'success') {
-    return (
-      <Grid fullWidth style={{ minHeight: '100vh', alignContent: 'center' }}>
-        <Column
-          lg={{ span: 8, offset: 4 }}
-          md={{ span: 6, offset: 1 }}
-          sm={4}
-          style={{ textAlign: 'center' }}
-        >
-          <Tile style={{ padding: 'clamp(2rem, 5vw, 4rem)' }}>
-            <div style={{ fontSize: 'clamp(1.5rem, 4vw, 2.5rem)', fontWeight: 700, marginBottom: '0.75rem' }}>
-              Welcome, {successName}!
-            </div>
-            <p style={{ color: 'var(--cds-text-secondary)', fontSize: '1rem', marginBottom: '2rem' }}>
-              You've been signed in. Have a great session!
-            </p>
-            <Button size="xl" onClick={resetForm} style={{ minWidth: '200px' }}>
-              Done
-            </Button>
-          </Tile>
-        </Column>
-      </Grid>
-    );
-  }
 
   // ── Sign-in form ───────────────────────────────────────────────────────────
   return (
