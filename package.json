@@ -1,0 +1,25 @@
+{
+  "name": "mn-ire",
+  "version": "0.0.1",
+  "private": true,
+  "packageManager": "pnpm@9.1.0",
+  "engines": {
+    "node": ">=20.11.0",
+    "pnpm": ">=9"
+  },
+  "scripts": {
+    "dev": "turbo run dev --parallel",
+    "build": "turbo run build",
+    "typecheck": "turbo run typecheck",
+    "lint": "turbo run lint",
+    "db:generate": "pnpm -F @mn-ire/db generate",
+    "db:migrate": "pnpm -F @mn-ire/db migrate",
+    "db:seed": "pnpm -F @mn-ire/db seed",
+    "db:studio": "pnpm -F @mn-ire/db studio"
+  },
+  "devDependencies": {
+    "turbo": "^2.1.3",
+    "typescript": "^5.5.4",
+    "prettier": "^3.3.3"
+  }
+}

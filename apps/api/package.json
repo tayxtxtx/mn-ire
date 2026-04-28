@@ -1,0 +1,38 @@
+{
+  "name": "@mn-ire/api",
+  "version": "0.0.1",
+  "private": true,
+  "license": "UNLICENSED",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch --tsconfig tsconfig.json src/index.ts",
+    "build": "tsc --project tsconfig.json",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --project tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@mn-ire/db": "workspace:*",
+    "@mn-ire/shared": "workspace:*",
+    "@fastify/cookie": "^9.3.1",
+    "@fastify/cors": "^9.0.1",
+    "@fastify/oauth2": "^7.7.0",
+    "@fastify/rate-limit": "^9.1.0",
+    "@fastify/session": "^10.9.0",
+    "@slack/bolt": "^3.20.0",
+    "bullmq": "^5.12.4",
+    "connect-redis": "^7.1.1",
+    "fastify": "^4.28.1",
+    "fastify-plugin": "^4.5.1",
+    "googleapis": "^140.0.1",
+    "ioredis": "^5.4.1",
+    "openid-client": "^5.6.5",
+    "pino-pretty": "^11.2.1",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@mn-ire/tsconfig": "workspace:*",
+    "@types/node": "^20.14.12",
+    "tsx": "^4.16.2",
+    "typescript": "^5.5.4"
+  }
+}

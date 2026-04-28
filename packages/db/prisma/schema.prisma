@@ -1,0 +1,134 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Enums
+// ──────────────────────────────────────────────────────────────────────────────
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CHECKED_IN
+  COMPLETED
+  NO_SHOW
+  CANCELLED
+}
+
+enum ResourceStatus {
+  AVAILABLE
+  IN_USE
+  MAINTENANCE
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Models
+// ──────────────────────────────────────────────────────────────────────────────
+
+model User {
+  id          String   @id @default(uuid())
+  authentikId String   @unique
+  email       String   @unique
+  displayName String
+  slackUserId String?
+
+  /// Denormalized snapshot of Authentik cert scopes, refreshed on every login.
+  /// Used for fast authorization checks without re-fetching the OIDC token.
+  certifications String[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  bookings  Booking[]
+
+  @@map("users")
+}
+
+model Shop {
+  id   String @id @default(uuid())
+  name String
+  slug String @unique
+
+  description       String?
+  /// Slack channel for guild alerts, e.g. "#woodshop-captains"
+  guildSlackChannel String?
+  /// Google Calendar ID for this shop's calendar
+  gcalCalendarId    String?
+
+  resources Resource[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("shops")
+}
+
+model Resource {
+  id     String @id @default(uuid())
+  shopId String
+  shop   Shop   @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  name        String
+  description String?
+
+  /// CertScope values required to book this resource
+  requiredCertifications String[]
+
+  maxSessionMinutes Int            @default(120)
+  /// Cooldown in hours between sessions for the same user. 0 = no cooldown.
+  cooldownHours     Int            @default(0)
+  isHighDemand      Boolean        @default(false)
+  bookingWindowDays Int            @default(7)
+  status            ResourceStatus @default(AVAILABLE)
+
+  bookings Booking[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("resources")
+}
+
+model Booking {
+  id         String @id @default(uuid())
+  userId     String
+  user       User   @relation(fields: [userId], references: [id], onDelete: Restrict)
+  resourceId String
+  resource   Resource @relation(fields: [resourceId], references: [id], onDelete: Restrict)
+
+  startsAt DateTime
+  endsAt   DateTime
+  status   BookingStatus @default(PENDING)
+
+  /// Google Calendar event ID (without UID_PREFIX). Null until GCal sync runs.
+  gcalEventId String?
+
+  checkedInAt      DateTime?
+  noShowNotifiedAt DateTime?
+  cancelledAt      DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([resourceId, startsAt])
+  @@index([userId, startsAt])
+  @@index([status, startsAt])
+  @@map("bookings")
+}
+
+/// One row per Google Calendar calendar ID. Tracks incremental sync state.
+model CalendarSyncState {
+  /// The GCal calendarId (e.g. "abc123@group.calendar.google.com")
+  calendarId String    @id
+  /// Null when a full sync is needed; set after the first successful sync.
+  syncToken  String?
+  lastSyncAt DateTime?
+  updatedAt  DateTime  @updatedAt
+
+  @@map("calendar_sync_states")
+}

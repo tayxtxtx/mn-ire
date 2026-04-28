@@ -1,0 +1,35 @@
+/* Kiosk-mode overrides — glove-friendly, high-contrast, no hover states */
+:root {
+  /* Enforce 64px minimum tap targets throughout the kiosk */
+  --kiosk-min-target: 64px;
+  --kiosk-font-body: 1rem;       /* --cds-body-02 */
+  --kiosk-font-label: 0.875rem;  /* --cds-label-02 */
+}
+
+body {
+  font-family: 'IBM Plex Sans', sans-serif;
+  background-color: var(--cds-background);
+  color: var(--cds-text-primary);
+  overflow: hidden; /* Kiosk should not scroll */
+}
+
+/* Ensure all Carbon buttons meet the 64px touch target */
+.cds--btn {
+  min-height: var(--kiosk-min-target) !important;
+  min-width: var(--kiosk-min-target) !important;
+  font-size: 1.125rem !important;
+  padding-block: 1rem !important;
+}
+
+/* Tile touch targets */
+.cds--tile {
+  cursor: pointer;
+  min-height: var(--kiosk-min-target);
+}
+
+/* Prevent hover-only state flashes on touchscreens */
+@media (hover: none) {
+  .cds--tile:hover {
+    background-color: var(--cds-layer-01);
+  }
+}
