@@ -20,12 +20,14 @@ const adminRoutes: FastifyPluginAsync = async (fastify) => {
    *   - Upcoming CONFIRMED bookings (next 60 minutes)
    * Unauthenticated — the status screen has no login.
    */
-  fastify.get('/api/status', async (_req, reply) => {
+  fastify.get<{ Querystring: { shop?: string } }>('/api/status', async (req, reply) => {
     const now = new Date();
     const horizon = new Date(now.getTime() + 60 * 60_000);
+    const shopSlug = req.query.shop?.trim() || undefined;
 
     const [shops, whosIn, upcoming] = await Promise.all([
       fastify.prisma.shop.findMany({
+        where:   shopSlug ? { slug: shopSlug } : {},
         orderBy: { name: 'asc' },
         include: {
           resources: {
@@ -36,7 +38,11 @@ const adminRoutes: FastifyPluginAsync = async (fastify) => {
       }),
 
       fastify.prisma.booking.findMany({
-        where: { status: 'CHECKED_IN', endsAt: { gt: now } },
+        where: {
+          status:   'CHECKED_IN',
+          endsAt:   { gt: now },
+          ...(shopSlug ? { resource: { shop: { slug: shopSlug } } } : {}),
+        },
         include: {
           user:     { select: { displayName: true } },
           resource: { select: { id: true, name: true, shopId: true } },
@@ -48,6 +54,7 @@ const adminRoutes: FastifyPluginAsync = async (fastify) => {
         where: {
           status:   'CONFIRMED',
           startsAt: { gte: now, lte: horizon },
+          ...(shopSlug ? { resource: { shop: { slug: shopSlug } } } : {}),
         },
         include: {
           user:     { select: { displayName: true } },
