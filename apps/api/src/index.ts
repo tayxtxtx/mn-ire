@@ -13,11 +13,14 @@ import bookingsRoutes from './routes/bookings.js';
 import adminRoutes from './routes/admin.js';
 import adminBookingsRoutes from './routes/adminBookings.js';
 import adminShopsRoutes from './routes/adminShops.js';
+import adminUsersRoutes from './routes/adminUsers.js';
 import walkInRoutes from './routes/walkin.js';
 import kioskRoutes from './routes/kiosk.js';
 import { startGCalSyncScheduler } from './services/gcal.js';
 import { startSlackApp } from './services/slack.js';
 import { startNoShowWorker } from './workers/noshow.js';
+import { initSettings } from './services/settings.js';
+import adminSettingsRoutes from './routes/adminSettings.js';
 
 const fastify = Fastify(
   env.NODE_ENV === 'development'
@@ -60,6 +63,10 @@ await fastify.register(fastifyRateLimit, {
   redis: fastify.redis,
 });
 
+// ── Settings cache ─────────────────────────────────────────────────────────────
+// Must run before auth plugins so getSetting() works during OIDC discovery.
+await initSettings(fastify.prisma);
+
 // ── Feature plugins & routes ──────────────────────────────────────────────────
 
 // Auth: /auth/login, /auth/callback, /auth/logout, /auth/me
@@ -71,6 +78,8 @@ await fastify.register(bookingsRoutes);
 await fastify.register(adminRoutes);
 await fastify.register(adminBookingsRoutes);
 await fastify.register(adminShopsRoutes);
+await fastify.register(adminUsersRoutes);
+await fastify.register(adminSettingsRoutes);
 await fastify.register(walkInRoutes);
 await fastify.register(kioskRoutes);
 

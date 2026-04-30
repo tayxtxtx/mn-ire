@@ -12,6 +12,7 @@
 import type { FastifyInstance } from 'fastify';
 import crypto from 'node:crypto';
 import { env } from '../../env.js';
+import { getSetting } from '../../services/settings.js';
 import type { SessionUser } from './types.js';
 import './types.js'; // activate FastifySessionObject module augmentation
 
@@ -48,9 +49,9 @@ export async function registerSlackOAuthRoutes(fastify: FastifyInstance): Promis
 
     const params = new URLSearchParams({
       response_type: 'code',
-      client_id: env.SLACK_CLIENT_ID,
-      scope: 'openid profile email',
-      redirect_uri: env.SLACK_REDIRECT_URI,
+      client_id:     getSetting('SLACK_CLIENT_ID', env.SLACK_CLIENT_ID),
+      scope:         'openid profile email',
+      redirect_uri:  getSetting('SLACK_REDIRECT_URI', env.SLACK_REDIRECT_URI),
       state,
     });
     reply.redirect(`${SLACK_AUTHORIZE_URL}?${params.toString()}`);
@@ -84,9 +85,9 @@ export async function registerSlackOAuthRoutes(fastify: FastifyInstance): Promis
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams({
           code,
-          client_id: env.SLACK_CLIENT_ID,
-          client_secret: env.SLACK_CLIENT_SECRET,
-          redirect_uri: env.SLACK_REDIRECT_URI,
+          client_id:     getSetting('SLACK_CLIENT_ID',     env.SLACK_CLIENT_ID),
+          client_secret: getSetting('SLACK_CLIENT_SECRET', env.SLACK_CLIENT_SECRET),
+          redirect_uri:  getSetting('SLACK_REDIRECT_URI',  env.SLACK_REDIRECT_URI),
         }),
       });
 

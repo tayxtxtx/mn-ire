@@ -19,19 +19,28 @@
 import { google } from 'googleapis';
 import type { PrismaClient, Booking, Resource, Shop, User } from '@makenashville/db';
 import { UID_PREFIX } from '@makenashville/shared';
-import { env } from '../env.js';
+import { getSetting } from './settings.js';
 
 // ── OAuth2 client (singleton) ──────────────────────────────────────────────
 
 function buildAuth() {
   const auth = new google.auth.OAuth2(
-    env.GOOGLE_CALENDAR_CLIENT_ID,
-    env.GOOGLE_CALENDAR_CLIENT_SECRET,
+    getSetting('GOOGLE_CALENDAR_CLIENT_ID'),
+    getSetting('GOOGLE_CALENDAR_CLIENT_SECRET'),
   );
-  if (env.GOOGLE_CALENDAR_REFRESH_TOKEN) {
-    auth.setCredentials({ refresh_token: env.GOOGLE_CALENDAR_REFRESH_TOKEN });
+  const refreshToken = getSetting('GOOGLE_CALENDAR_REFRESH_TOKEN');
+  if (refreshToken) {
+    auth.setCredentials({ refresh_token: refreshToken });
   }
   return auth;
+}
+
+/**
+ * Reset the OAuth2 client singleton so the next operation rebuilds it with
+ * the latest credentials. Called by adminSettings after a GCal settings save.
+ */
+export function resetGCalAuth(): void {
+  _auth = null;
 }
 
 let _auth: ReturnType<typeof buildAuth> | null = null;
@@ -49,9 +58,9 @@ function getCalendar() {
 
 function isGCalConfigured(): boolean {
   return Boolean(
-    env.GOOGLE_CALENDAR_CLIENT_ID &&
-      env.GOOGLE_CALENDAR_CLIENT_SECRET &&
-      env.GOOGLE_CALENDAR_REFRESH_TOKEN,
+    getSetting('GOOGLE_CALENDAR_CLIENT_ID') &&
+    getSetting('GOOGLE_CALENDAR_CLIENT_SECRET') &&
+    getSetting('GOOGLE_CALENDAR_REFRESH_TOKEN'),
   );
 }
 

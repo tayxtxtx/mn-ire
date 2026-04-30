@@ -22,10 +22,22 @@ export default function AppHeader() {
   useEffect(() => {
     if (TEST_MODE) return;
     fetch('/auth/me', { credentials: 'include' })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => setMe(data as Me | null))
+      .then(async (r) => {
+        if (r.ok) return r.json() as Promise<Me>;
+        // Not logged in — check provider then redirect
+        const providerRes = await fetch('/auth/provider').catch(() => null);
+        const providerData = providerRes?.ok ? await providerRes.json() as { provider: string } : null;
+        const provider = providerData?.provider ?? 'local';
+        if (provider === 'local') {
+          navigate('/login');
+        } else {
+          window.location.href = '/auth/login';
+        }
+        return null;
+      })
+      .then((data) => { if (data) setMe(data); })
       .catch(() => {});
-  }, []);
+  }, [navigate]);
 
   const handleLogout = async () => {
     await fetch('/auth/logout', { method: 'POST', credentials: 'include' });

@@ -9,15 +9,16 @@ A resource reservation platform for makerspace. Members book equipment, check in
 | Feature | Description |
 |---|---|
 | **Resource booking** | Members book any certified resource up to 7 days out (configurable per resource) |
-| **Certification gating** | Resources require specific certifications; certs are sourced from Authentik scopes or managed in the DB |
-| **No-show protection** | Bookings auto-cancelled 15 min after start time if not checked in; DM + guild channel notification sent |
-| **Cooldown enforcement** | High-demand resources (CNC, Laser) enforce a 4-hour cooldown after each session |
-| **Google Calendar sync** | Bidirectional sync per shop calendar; loop prevention via `mn-booking-` UID prefix |
-| **Slack bot** | Booking / cancellation / check-in / no-show notifications to the relevant guild channel |
-| **Admin console** | Paginated booking table with status/date/resource filters; inline edit and force-cancel; user admin promotion |
-| **Status screen** | Full-bleed TV display — green (available), yellow (reserved soon), red (occupied), orange (maintenance/down) |
-| **Switchable identity provider** | `AUTH_PROVIDER=authentik` (OIDC with cert scopes) or `AUTH_PROVIDER=slack` (Sign in with Slack) |
-| **Kiosk mode** | Tablet-friendly check-in UI (Device Authorization Grant or RFID keyboard emulation) |
+| **Certification gating** | Resources require specific certifications; managed directly in the DB via the admin console |
+| **No-show protection** | Bookings auto-cancelled 15 min after start time if not checked in |
+| **Cooldown enforcement** | High-demand resources (CNC, Laser) enforce a configurable cooldown between sessions |
+| **Admin console** | Manage shops, resources, bookings, and users; invite new members; toggle admin access |
+| **Status screen** | Full-bleed TV display — green (available), yellow (reserved soon), red (occupied), orange (maintenance) |
+| **Built-in auth** | Email + password login with admin-issued invite links — no external accounts required |
+| **Optional: Google Calendar** | Bidirectional sync per shop calendar when `GOOGLE_CALENDAR_*` env vars are set |
+| **Optional: Slack bot** | Booking / cancellation / check-in / no-show notifications when `SLACK_BOT_TOKEN` is set |
+| **Optional: Authentik / Slack OAuth** | OIDC or OAuth login via external providers (`AUTH_PROVIDER=authentik\|slack`) |
+| **Kiosk mode** | Tablet-friendly walk-in sign-in and booking check-in at the front desk |
 
 ---
 
@@ -77,10 +78,21 @@ pnpm db:seed      # seeds 5 shops, demo resources, and a demo user
 
 ### 5. Choose your identity provider
 
-#### Option A — Authentik OIDC (default)
+#### Option A — Built-in local auth (default, no external accounts needed)
+
+This is the default. No extra configuration required.
+
+```env
+# This is already the default — no need to set it explicitly
+AUTH_PROVIDER=local
+```
+
+Members log in with email + password. Accounts are created via invite links generated from the admin console.
+
+#### Option B — Authentik OIDC (optional)
 
 1. In Authentik, create an **OAuth2/OpenID Provider** for the booking system.
-2. Add a custom property mapping that includes certification scopes in the token (e.g. `woodshop_basic metal_lathe cnc_advanced`).
+2. Add a custom property mapping that includes certification scopes in the token.
 3. Set in `.env`:
 
 ```env
@@ -88,17 +100,16 @@ AUTH_PROVIDER=authentik
 AUTHENTIK_ISSUER_URL=https://auth.yourdomain.org/application/o/booking/
 AUTHENTIK_CLIENT_ID=<client-id>
 AUTHENTIK_CLIENT_SECRET=<client-secret>
-AUTHENTIK_REDIRECT_URI=http://localhost:5173/auth/callback
-AUTHENTIK_CERT_SCOPES=woodshop_basic,woodshop_advanced,metal_lathe,metal_mill,cnc_basic,cnc_advanced,laser_certified,3dprint_basic,welding_mig,welding_tig,electronics_basic
+AUTHENTIK_REDIRECT_URI=http://localhost:4000/auth/callback
+AUTHENTIK_CERT_SCOPES=woodshop_basic,woodshop_advanced,metal_lathe,cnc_basic,laser_certified
 ```
 
-#### Option B — Sign in with Slack
+#### Option C — Sign in with Slack (optional)
 
 1. Create a Slack app at [api.slack.com/apps](https://api.slack.com/apps).
 2. Under **OAuth & Permissions**, add scopes: `openid profile email`.
-3. Enable **Sign in with Slack** (OpenID Connect).
-4. Add `http://localhost:4000/auth/callback` to Redirect URLs.
-5. Set in `.env`:
+3. Add `http://localhost:4000/auth/callback` to Redirect URLs.
+4. Set in `.env`:
 
 ```env
 AUTH_PROVIDER=slack
@@ -107,15 +118,27 @@ SLACK_CLIENT_SECRET=<client-secret>
 SLACK_REDIRECT_URI=http://localhost:4000/auth/callback
 ```
 
-> **Switching providers** — change `AUTH_PROVIDER` and restart the API. Existing user accounts are matched by email, so members keep their booking history regardless of which provider they log in with.
+> **Switching providers** — change `AUTH_PROVIDER` and restart the API. Existing accounts are matched by email, so members keep their booking history.
 
-### 6. Set up admin access
+### 6. Set up the first admin
 
 ```env
-ADMIN_EMAILS=you@example.com,otherperson@example.com
+ADMIN_EMAILS=you@example.com
 ```
 
-Any email in this list gets `isAdmin = true` automatically on first login. After that, admin status can be managed from the admin console (`PATCH /api/admin/users/:id`) — you no longer need to keep the email in this list.
+Any email listed here gets `isAdmin = true` automatically on their first login.
+
+**With `AUTH_PROVIDER=local`**, there are no accounts until you create them. To bootstrap the first admin:
+
+1. Start the servers (`pnpm dev`).
+2. Use Prisma Studio or a direct DB query to create an invite row, **or** use the seed script which creates one:
+   ```bash
+   pnpm db:seed   # creates a demo admin invite and prints its URL
+   ```
+3. Open the printed invite URL → set your password → you're in as admin.
+4. From the admin console (`/admin/users`), invite all other members.
+
+After bootstrapping, admin status can be managed from `/admin/users` — you no longer need `ADMIN_EMAILS`.
 
 ### 7. Start the development servers
 
@@ -211,16 +234,25 @@ This uses the data in [`apps/status/src/mockData.ts`](apps/status/src/mockData.t
 
 ## Admin Console
 
-The admin console is accessible at `/admin` in the member portal for any user with `isAdmin = true`.
+The admin console is accessible at `/admin` in the member portal for any user with `isAdmin = true`. It has three tabs:
 
 **Capabilities:**
 
-- **Booking table** — paginated list of all bookings across all resources; filterable by status, resource, shop, user, and date range.
-- **Edit booking** — change booking status or reschedule start/end times (overlap check enforced).
-- **Force-cancel** — cancel any booking regardless of state.
-- **Shops & Resources** — create, edit, and delete shops; add and configure resources per shop (certifications required, cooldown, booking window, kiosk visibility).
-- **Maintenance toggle** — put any resource in/out of MAINTENANCE from the resource detail page.
-- **User management** — promote or demote admin status via `PATCH /api/admin/users/:id`.
+**Bookings tab** (`/admin`)
+- Paginated list of all bookings; filter by status, resource, shop, user, and date range
+- Inline edit (status, reschedule) with overlap check
+- Force-cancel any booking
+
+**Shops & Resources tab** (`/admin/shops`)
+- Create, edit, and delete shops
+- Add and configure resources per shop (certifications, cooldown, booking window, kiosk visibility)
+- Maintenance toggle per resource
+
+**Users tab** (`/admin/users`)
+- List all members with role badges and certifications
+- **Invite user** — generate a one-time invite link (valid 7 days) to copy and share
+- View and revoke pending invites
+- Promote or demote admin status per user
 
 ---
 

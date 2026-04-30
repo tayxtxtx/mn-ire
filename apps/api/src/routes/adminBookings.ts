@@ -202,28 +202,8 @@ const adminBookingsRoutes: FastifyPluginAsync = async (fastify) => {
     },
   );
 
-  // ── GET /api/admin/users — lightweight user list for the filter dropdowns ──
-  fastify.get('/api/admin/users', async (_req, reply) => {
-    const users = await fastify.prisma.user.findMany({
-      select: { id: true, displayName: true, email: true, isAdmin: true },
-      orderBy: { displayName: 'asc' },
-    });
-    reply.send(users);
-  });
-
-  // ── PATCH /api/admin/users/:id — promote/demote admin ────────────────────
-  fastify.patch<{ Params: { id: string }; Body: { isAdmin: boolean } }>(
-    '/api/admin/users/:id',
-    async (req, reply) => {
-      const user = await fastify.prisma.user.update({
-        where: { id: req.params.id },
-        data: { isAdmin: req.body.isAdmin },
-        select: { id: true, displayName: true, email: true, isAdmin: true },
-      });
-      reply.send(user);
-    },
-  );
 };
+// Note: /api/admin/users and /api/admin/users/:id are in adminUsers.ts
 
 // ── Serializer ────────────────────────────────────────────────────────────
 

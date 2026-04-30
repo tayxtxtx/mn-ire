@@ -43,6 +43,8 @@ model User {
   certifications String[]
   /// Grants access to the admin console. Set manually or auto-promoted via ADMIN_EMAILS env.
   isAdmin        Boolean  @default(false)
+  /// Bcrypt hash — only set for AUTH_PROVIDER=local accounts. Null for OAuth accounts.
+  passwordHash   String?
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -148,6 +150,31 @@ model Booking {
   @@index([userId, startsAt])
   @@index([status, startsAt])
   @@map("bookings")
+}
+
+/// Admin-managed configuration. DB values override env vars; env vars are the fallback.
+/// Secret values are stored in plaintext — protect your database.
+model SystemSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+
+  @@map("system_settings")
+}
+
+/// Admin-created invitation for a new local-auth member.
+model Invite {
+  id          String    @id @default(uuid())
+  email       String
+  displayName String
+  /// Random UUID used as the secure invitation token.
+  token       String    @unique @default(uuid())
+  expiresAt   DateTime
+  usedAt      DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([token])
+  @@map("invites")
 }
 
 /// One row per Google Calendar calendar ID. Tracks incremental sync state.

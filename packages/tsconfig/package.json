@@ -2,5 +2,5 @@
   "name": "@makenashville/tsconfig",
   "version": "0.0.1",
   "private": true,
-  "license": "UNLICENSED"
+  "license": "MIT"
 }

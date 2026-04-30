@@ -8,8 +8,8 @@
  */
 import { Queue, Worker, type Job } from 'bullmq';
 import { prisma } from '@makenashville/db';
-import { BOOKING_POLICY } from '@makenashville/shared';
 import { markNoShow } from '../services/booking.js';
+import { getSettingNumber } from '../services/settings.js';
 import { env } from '../env.js';
 
 const QUEUE_NAME = 'noshow';
@@ -34,7 +34,7 @@ export async function scheduleNoShowCheck(
   bookingId: string,
   startsAt: Date,
 ): Promise<void> {
-  const graceMs = BOOKING_POLICY.NO_SHOW_GRACE_MINUTES * 60_000;
+  const graceMs = getSettingNumber('DEFAULT_NO_SHOW_GRACE_MINUTES', 15) * 60_000;
   const fireAt = startsAt.getTime() + graceMs;
   const delay = Math.max(0, fireAt - Date.now());
 

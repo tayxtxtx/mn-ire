@@ -13,6 +13,7 @@ import fp from 'fastify-plugin';
 import type { FastifyPluginAsync, FastifyRequest, FastifyReply } from 'fastify';
 import type { AuthClaims } from '@makenashville/shared';
 import { env } from '../env.js';
+import { registerLocalRoutes } from './auth/local.js';
 import { registerAuthentikRoutes } from './auth/authentik.js';
 import { registerSlackOAuthRoutes } from './auth/slack-oauth.js';
 
@@ -75,7 +76,10 @@ const authPlugin: FastifyPluginAsync = async (fastify) => {
 
   // ── Provider-specific login / callback routes ─────────────────────────────
 
-  if (env.AUTH_PROVIDER === 'slack') {
+  if (env.AUTH_PROVIDER === 'local') {
+    fastify.log.info('[auth] Using local email+password provider.');
+    await registerLocalRoutes(fastify);
+  } else if (env.AUTH_PROVIDER === 'slack') {
     fastify.log.info('[auth] Using Slack OAuth provider.');
     await registerSlackOAuthRoutes(fastify);
   } else {

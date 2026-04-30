@@ -7,8 +7,10 @@
  *   notifyCheckedIn        — DM the member confirming check-in.
  *   notifyNoShow           — DM the member; guild alert releasing the slot.
  *   startSlackApp          — starts Socket Mode listener. Call once at startup.
+ *   restartSlackApp        — stops current app and starts a fresh one with the
+ *                            latest settings (called by adminSettings after a save).
  *
- * Guild channels are resolved from env.SLACK_GUILD_CHANNELS:
+ * Guild channels are resolved from the SLACK_GUILD_CHANNELS setting:
  *   woodshop=#woodshop-captains,cnc=#cnc-captains,...
  *
  * The Slack user ID is stored on User.slackUserId. If missing, DMs are skipped
@@ -16,7 +18,7 @@
  */
 import { App } from '@slack/bolt';
 import type { Booking, Resource, Shop, User } from '@makenashville/db';
-import { env } from '../env.js';
+import { getSetting } from './settings.js';
 
 // ── Type helpers ───────────────────────────────────────────────────────────
 
@@ -28,19 +30,24 @@ type BookingWithRelations = Booking & {
 // ── Slack app singleton ────────────────────────────────────────────────────
 
 let _app: App | null = null;
+let _stopFn: (() => Promise<void>) | null = null;
 
 function isSlackConfigured(): boolean {
-  return Boolean(env.SLACK_BOT_TOKEN && env.SLACK_APP_TOKEN && env.SLACK_SIGNING_SECRET);
+  return Boolean(
+    getSetting('SLACK_BOT_TOKEN') &&
+    getSetting('SLACK_APP_TOKEN') &&
+    getSetting('SLACK_SIGNING_SECRET'),
+  );
 }
 
 function getApp(): App | null {
   if (!isSlackConfigured()) return null;
   if (!_app) {
     _app = new App({
-      token: env.SLACK_BOT_TOKEN,
-      appToken: env.SLACK_APP_TOKEN,
-      signingSecret: env.SLACK_SIGNING_SECRET,
-      socketMode: true,
+      token:         getSetting('SLACK_BOT_TOKEN'),
+      appToken:      getSetting('SLACK_APP_TOKEN'),
+      signingSecret: getSetting('SLACK_SIGNING_SECRET'),
+      socketMode:    true,
     });
   }
   return _app;
@@ -49,23 +56,23 @@ function getApp(): App | null {
 // ── Guild channel resolution ───────────────────────────────────────────────
 
 /**
- * Parse SLACK_GUILD_CHANNELS env string into a Map<shopSlug, channelId>.
+ * Parse SLACK_GUILD_CHANNELS setting into a Map<shopSlug, channelId>.
  * Format: "woodshop=#woodshop-captains,cnc=#cnc-captains"
+ * Called dynamically so DB overrides take effect without a restart.
  */
 function buildGuildChannelMap(): Map<string, string> {
   const map = new Map<string, string>();
-  if (!env.SLACK_GUILD_CHANNELS) return map;
-  for (const pair of env.SLACK_GUILD_CHANNELS.split(',')) {
+  const raw = getSetting('SLACK_GUILD_CHANNELS');
+  if (!raw) return map;
+  for (const pair of raw.split(',')) {
     const [slug, channel] = pair.trim().split('=');
     if (slug && channel) map.set(slug.trim(), channel.trim());
   }
   return map;
 }
 
-const guildChannelMap = buildGuildChannelMap();
-
 function guildChannelFor(shop: Shop): string | undefined {
-  return shop.guildSlackChannel ?? guildChannelMap.get(shop.slug);
+  return shop.guildSlackChannel ?? buildGuildChannelMap().get(shop.slug);
 }
 
 // ── DM helper ─────────────────────────────────────────────────────────────
@@ -174,9 +181,6 @@ export async function notifyCheckedIn(booking: BookingWithRelations): Promise<vo
 
 /**
  * Called by the no-show BullMQ worker when a member didn't check in.
- * - Transitions booking to NO_SHOW (already done by markNoShow).
- * - DMs the member.
- * - Posts a guild alert that the slot has been released.
  */
 export async function notifyNoShow(booking: BookingWithRelations): Promise<void> {
   const { user, resource } = booking;
@@ -213,7 +217,7 @@ function registerListeners(app: App): void {
   });
 }
 
-// ── Startup ────────────────────────────────────────────────────────────────
+// ── Startup & hot-reload ───────────────────────────────────────────────────
 
 /**
  * Start the Slack Socket Mode listener. Returns a cleanup fn.
@@ -230,8 +234,39 @@ export async function startSlackApp(): Promise<() => Promise<void>> {
   await app.start();
   console.info('[slack] Socket Mode app started.');
 
-  return async () => {
+  _stopFn = async () => {
     await app.stop();
     console.info('[slack] Socket Mode app stopped.');
+  };
+
+  return _stopFn;
+}
+
+/**
+ * Stop the current Slack app (if running) and start a fresh one with the
+ * latest credential settings. Called by adminSettings after a credentials save.
+ */
+export async function restartSlackApp(): Promise<void> {
+  // Stop the old app
+  if (_stopFn) {
+    try { await _stopFn(); } catch { /* ignore stop errors */ }
+    _stopFn = null;
+  }
+  _app = null; // force getApp() to create a new instance
+
+  // Start with the latest settings
+  const newApp = getApp();
+  if (!newApp) {
+    console.info('[slack] Credentials not set — Slack bot remains disabled after save.');
+    return;
+  }
+
+  registerListeners(newApp);
+  await newApp.start();
+  console.info('[slack] Slack bot restarted with updated credentials.');
+
+  _stopFn = async () => {
+    await newApp.stop();
+    console.info('[slack] Slack bot stopped.');
   };
 }

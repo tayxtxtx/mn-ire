@@ -6,10 +6,10 @@ const schema = z.object({
   REDIS_URL: z.string().url(),
 
   // ── Identity provider ────────────────────────────────────────────────────
-  // Set to "slack" to use Slack OAuth instead of Authentik OIDC.
-  // When using Slack, certifications are managed directly in the DB
-  // rather than derived from OIDC token scopes.
-  AUTH_PROVIDER: z.enum(['authentik', 'slack']).default('authentik'),
+  // "local"    — built-in email+password; no external accounts required (default).
+  // "authentik" — OIDC via self-hosted Authentik; certs from token scopes.
+  // "slack"     — Sign in with Slack OAuth; certs managed in DB.
+  AUTH_PROVIDER: z.enum(['local', 'authentik', 'slack']).default('local'),
 
   // Authentik (required when AUTH_PROVIDER=authentik)
   AUTHENTIK_ISSUER_URL: z.string().default(''),
@@ -59,13 +59,12 @@ if (!parsed.success) {
 
 export const env = parsed.data;
 
-// Validate that whichever provider is selected actually has its credentials.
+// Warn (not crash) when an OAuth provider is selected but credentials are missing.
 if (env.AUTH_PROVIDER === 'authentik') {
   const missing = (['AUTHENTIK_ISSUER_URL', 'AUTHENTIK_CLIENT_ID', 'AUTHENTIK_CLIENT_SECRET', 'AUTHENTIK_REDIRECT_URI'] as const)
     .filter((k) => !env[k]);
   if (missing.length) {
-    console.error(`AUTH_PROVIDER=authentik but missing: ${missing.join(', ')}`);
-    process.exit(1);
+    console.warn(`[env] AUTH_PROVIDER=authentik but missing: ${missing.join(', ')} — auth will fail at runtime.`);
   }
 }
 
@@ -73,7 +72,6 @@ if (env.AUTH_PROVIDER === 'slack') {
   const missing = (['SLACK_CLIENT_ID', 'SLACK_CLIENT_SECRET', 'SLACK_REDIRECT_URI'] as const)
     .filter((k) => !env[k]);
   if (missing.length) {
-    console.error(`AUTH_PROVIDER=slack but missing: ${missing.join(', ')}`);
-    process.exit(1);
+    console.warn(`[env] AUTH_PROVIDER=slack but missing: ${missing.join(', ')} — auth will fail at runtime.`);
   }
 }

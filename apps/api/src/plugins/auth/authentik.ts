@@ -6,6 +6,7 @@
 import type { FastifyInstance } from 'fastify';
 import { Issuer } from 'openid-client';
 import { env } from '../../env.js';
+import { getSetting } from '../../services/settings.js';
 import type { SessionUser } from './types.js';
 
 function getAdminEmails(fastify: FastifyInstance): Set<string> {
@@ -13,16 +14,17 @@ function getAdminEmails(fastify: FastifyInstance): Set<string> {
 }
 
 export async function registerAuthentikRoutes(fastify: FastifyInstance): Promise<void> {
-  const issuer = await Issuer.discover(env.AUTHENTIK_ISSUER_URL);
+  const issuer = await Issuer.discover(getSetting('AUTHENTIK_ISSUER_URL', env.AUTHENTIK_ISSUER_URL));
   const client = new issuer.Client({
-    client_id: env.AUTHENTIK_CLIENT_ID,
-    client_secret: env.AUTHENTIK_CLIENT_SECRET,
-    redirect_uris: [env.AUTHENTIK_REDIRECT_URI],
+    client_id:     getSetting('AUTHENTIK_CLIENT_ID',     env.AUTHENTIK_CLIENT_ID),
+    client_secret: getSetting('AUTHENTIK_CLIENT_SECRET', env.AUTHENTIK_CLIENT_SECRET),
+    redirect_uris: [getSetting('AUTHENTIK_REDIRECT_URI', env.AUTHENTIK_REDIRECT_URI)],
     response_types: ['code'],
   });
 
   fastify.get('/auth/login', async (_req, reply) => {
-    const certScopes = env.AUTHENTIK_CERT_SCOPES ? env.AUTHENTIK_CERT_SCOPES.split(',') : [];
+    const certScopeRaw = getSetting('AUTHENTIK_CERT_SCOPES', env.AUTHENTIK_CERT_SCOPES ?? '');
+    const certScopes = certScopeRaw ? certScopeRaw.split(',') : [];
     const scope = ['openid', 'profile', 'email', ...certScopes].join(' ');
     reply.redirect(client.authorizationUrl({ scope }));
   });
@@ -31,10 +33,12 @@ export async function registerAuthentikRoutes(fastify: FastifyInstance): Promise
     '/auth/callback',
     async (req, reply) => {
       const params = client.callbackParams(req.raw);
-      const tokenSet = await client.callback(env.AUTHENTIK_REDIRECT_URI, params);
+      const redirectUri = getSetting('AUTHENTIK_REDIRECT_URI', env.AUTHENTIK_REDIRECT_URI);
+      const tokenSet = await client.callback(redirectUri, params);
       const claims = tokenSet.claims();
 
-      const certScopes = env.AUTHENTIK_CERT_SCOPES ? env.AUTHENTIK_CERT_SCOPES.split(',') : [];
+      const certScopeRaw2 = getSetting('AUTHENTIK_CERT_SCOPES', env.AUTHENTIK_CERT_SCOPES ?? '');
+      const certScopes = certScopeRaw2 ? certScopeRaw2.split(',') : [];
       const certifications = certScopes.filter(
         (s) => claims[s] === true || claims[s] === 'true',
       );
