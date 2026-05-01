@@ -8,6 +8,8 @@ COPY packages/ packages/
 COPY apps/ apps/
 # Install all deps (including devDeps for tsc, prisma CLI)
 RUN pnpm install --frozen-lockfile
+# Build shared package first (other packages depend on its dist/)
+RUN pnpm --filter @makenashville/shared build
 # Generate Prisma client
 RUN pnpm db:generate
 # Build API TypeScript
