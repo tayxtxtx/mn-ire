@@ -8,7 +8,7 @@ services:
     restart: unless-stopped
     environment:
       NODE_ENV: production
-      DATABASE_URL: postgresql://mnbooking:mnbooking@postgres:5432/mnbooking
+      DATABASE_URL: postgresql://mnbooking:${POSTGRES_PASSWORD:-mnbooking}@postgres:5432/mnbooking
       REDIS_URL: redis://redis:6379
       API_PORT: "4000"
       # These can be updated in Admin → Settings after first login
@@ -56,7 +56,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: mnbooking
-      POSTGRES_PASSWORD: mnbooking
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mnbooking}
       POSTGRES_DB: mnbooking
     volumes:
       - pgdata:/var/lib/postgresql/data
