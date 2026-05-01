@@ -183,6 +183,9 @@ NODE_ENV=development pnpm install --frozen-lockfile
 info "Running database migrations..."
 pnpm db:migrate:prod
 
+info "Generating Prisma client..."
+pnpm db:generate
+
 info "Seeding database..."
 pnpm db:seed
 

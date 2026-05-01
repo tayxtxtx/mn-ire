@@ -22,7 +22,11 @@ info "Installing dependencies..."
 pnpm install --frozen-lockfile
 
 info "Running migrations..."
-pnpm db:migrate
+set -a; source .env; set +a
+pnpm db:migrate:prod
+
+info "Generating Prisma client..."
+pnpm db:generate
 
 info "Building apps..."
 pnpm build
