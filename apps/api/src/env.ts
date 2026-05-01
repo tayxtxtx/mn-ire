@@ -39,6 +39,9 @@ const schema = z.object({
   WEB_PUBLIC_URL: z.string().url().default('http://localhost:5173'),
   KIOSK_PUBLIC_URL: z.string().url().default('http://localhost:5174'),
   SESSION_SECRET: z.string().min(32).default('change-me-in-prod-must-be-32-chars!'),
+  // Set to "true" only when serving over HTTPS. Defaults to false so cookies
+  // work over plain HTTP (e.g. IP-based access before a domain/SSL is set up).
+  COOKIE_SECURE: z.string().default('false'),
 
   // Comma-separated emails that are auto-promoted to isAdmin=true on login.
   // Useful for bootstrapping without touching the DB directly.
