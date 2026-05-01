@@ -184,8 +184,8 @@ info "Installing Node dependencies (including devDeps for Prisma CLI)..."
 # Override NODE_ENV so pnpm installs devDependencies (prisma CLI, tsx)
 NODE_ENV=development pnpm install --frozen-lockfile
 
-info "Running database migrations..."
-pnpm db:migrate:prod
+info "Applying database schema..."
+pnpm db:push
 
 info "Generating Prisma client..."
 pnpm db:generate

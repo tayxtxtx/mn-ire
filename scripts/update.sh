@@ -24,8 +24,8 @@ pnpm install --frozen-lockfile
 set -a; source .env; set +a
 ln -sf "$REPO_DIR/.env" "$REPO_DIR/packages/db/.env"
 
-info "Running migrations..."
-pnpm db:migrate:prod
+info "Applying schema changes..."
+pnpm db:push
 
 info "Generating Prisma client..."
 pnpm db:generate
