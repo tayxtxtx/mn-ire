@@ -10,8 +10,9 @@ COPY apps/ apps/
 RUN pnpm install --frozen-lockfile
 # Build shared package first (other packages depend on its dist/)
 RUN pnpm --filter @makenashville/shared build
-# Generate Prisma client
+# Generate Prisma client, then compile the db package to dist/
 RUN pnpm db:generate
+RUN pnpm --filter @makenashville/db build
 # Build API TypeScript
 RUN pnpm --filter @makenashville/api build
 # Entrypoint handles DB push + SESSION_SECRET generation
