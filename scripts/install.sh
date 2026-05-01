@@ -159,6 +159,9 @@ EOF
   success ".env generated with random DB password and session secret."
 fi
 
+# Load .env into the current shell so Prisma and seed scripts can see DATABASE_URL etc.
+set -a; source .env; set +a
+
 # =============================================================================
 # 4. Dependencies, migrations, seed
 # =============================================================================
@@ -166,7 +169,7 @@ echo
 echo -e "${BOLD}── Step 4: Dependencies, migrations, seed ───────────────────────────────${RESET}"
 
 info "Installing Node dependencies (including devDeps for Prisma CLI)..."
-# Unset NODE_ENV temporarily so devDependencies (prisma CLI, tsx) are installed
+# Override NODE_ENV so pnpm installs devDependencies (prisma CLI, tsx)
 NODE_ENV=development pnpm install --frozen-lockfile
 
 info "Running database migrations..."
