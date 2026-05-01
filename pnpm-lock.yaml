@@ -226,6 +226,9 @@ importers:
       '@makenashville/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
+      '@types/node':
+        specifier: ^20.14.12
+        version: 20.19.39
       prisma:
         specifier: ^5.17.0
         version: 5.22.0
