@@ -6,7 +6,7 @@ import {
   Modal, TextInput, TextArea, Checkbox,
   NumberInput,
 } from '@carbon/react';
-import { Add, Edit, TrashCan, ChevronDown, ChevronUp } from '@carbon/icons-react';
+import { Add, Edit, TrashCan, ChevronDown, ChevronUp, Screen } from '@carbon/icons-react';
 import { TEST_MODE, MOCK_ADMIN_SHOPS } from '../../mockData.js';  // DELETE with mockData.ts
 import type { AdminShop, AdminResource } from '../../mockData.js';  // DELETE with mockData.ts
 import AdminNav from './AdminNav.js';
@@ -330,6 +330,14 @@ export default function AdminShops() {
                       )}
                     </div>
                     <Tag type="gray" size="sm">{shop.resources.length} resource{shop.resources.length !== 1 ? 's' : ''}</Tag>
+                    <Button
+                      kind="ghost" size="sm" renderIcon={Screen} iconDescription="Status screen"
+                      hasIconOnly
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        window.open(`http://${window.location.hostname}:82/${shop.slug}`, '_blank');
+                      }}
+                    />
                     <Button
                       kind="ghost" size="sm" renderIcon={Edit} iconDescription="Edit shop"
                       hasIconOnly

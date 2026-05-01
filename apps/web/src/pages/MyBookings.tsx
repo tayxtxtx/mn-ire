@@ -46,8 +46,11 @@ export default function MyBookings() {
       return;
     }
     fetch('/api/bookings', { credentials: 'include' })
-      .then((r) => r.json())
-      .then((data) => setBookings(data as BookingDto[]))
+      .then(async (r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json() as Promise<BookingDto[]>;
+      })
+      .then((data) => setBookings(Array.isArray(data) ? data : []))
       .catch(() => setError('Failed to load bookings.'))
       .finally(() => setLoading(false));
   };
@@ -113,6 +116,10 @@ export default function MyBookings() {
       <Column lg={16} md={8} sm={4}>
         {loading ? (
           <SkeletonText paragraph lineCount={6} />
+        ) : rows.length === 0 ? (
+          <div style={{ padding: '3rem 0', textAlign: 'center', color: 'var(--cds-text-secondary)' }}>
+            You have no bookings yet.
+          </div>
         ) : (
           <DataTable rows={rows} headers={headers}>
             {({ rows: tableRows, headers: tableHeaders, getTableProps, getRowProps }) => (
