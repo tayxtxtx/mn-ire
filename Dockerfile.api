@@ -5,7 +5,7 @@ WORKDIR /app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 # Copy all packages needed for API build
 COPY packages/ packages/
-COPY apps/api/ apps/api/
+COPY apps/ apps/
 # Install all deps (including devDeps for tsc, prisma CLI)
 RUN pnpm install --frozen-lockfile
 # Generate Prisma client

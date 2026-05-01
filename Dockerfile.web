@@ -3,7 +3,7 @@ RUN npm install -g pnpm
 WORKDIR /app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY packages/ packages/
-COPY apps/web/ apps/web/
+COPY apps/ apps/
 RUN pnpm install --frozen-lockfile
 RUN pnpm --filter @makenashville/web build
 
