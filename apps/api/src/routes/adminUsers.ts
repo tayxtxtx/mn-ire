@@ -41,17 +41,52 @@ const adminUsersRoutes: FastifyPluginAsync = async (fastify) => {
     reply.send(users);
   });
 
-  // PATCH /api/admin/users/:id — promote/demote admin or update certifications
+  // POST /api/admin/users — create a user directly (no invite flow)
+  fastify.post<{
+    Body: { displayName: string; email: string; password: string; isAdmin?: boolean };
+  }>('/api/admin/users', { preHandler: [fastify.requireAdmin] }, async (req, reply) => {
+    const { displayName, email, password, isAdmin = false } = req.body ?? {};
+    if (!displayName?.trim() || !email?.trim() || !password) {
+      return reply.code(400).send({ code: 'MISSING_FIELDS', message: 'displayName, email, and password are required.' });
+    }
+    if (password.length < 8) {
+      return reply.code(400).send({ code: 'WEAK_PASSWORD', message: 'Password must be at least 8 characters.' });
+    }
+    const existing = await fastify.prisma.user.findUnique({ where: { email: email.trim() } });
+    if (existing) {
+      return reply.code(409).send({ code: 'EMAIL_TAKEN', message: 'A user with that email already exists.' });
+    }
+    const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
+    const user = await fastify.prisma.user.create({
+      data: {
+        authentikId:    `local:${email.trim()}`,
+        email:          email.trim(),
+        displayName:    displayName.trim(),
+        certifications: [],
+        passwordHash,
+        isAdmin,
+      },
+      select: { id: true, displayName: true, email: true, isAdmin: true, certifications: true },
+    });
+    reply.code(201).send(user);
+  });
+
+  // PATCH /api/admin/users/:id — promote/demote admin, update certifications, or reset password
   fastify.patch<{
     Params: { id: string };
-    Body: { isAdmin?: boolean; certifications?: string[] };
+    Body: { isAdmin?: boolean; certifications?: string[]; password?: string };
   }>('/api/admin/users/:id', { preHandler: [fastify.requireAdmin] }, async (req, reply) => {
-    const { isAdmin, certifications } = req.body;
+    const { isAdmin, certifications, password } = req.body;
+    if (password !== undefined && password.length < 8) {
+      return reply.code(400).send({ code: 'WEAK_PASSWORD', message: 'Password must be at least 8 characters.' });
+    }
+    const passwordHash = password ? await bcrypt.hash(password, BCRYPT_ROUNDS) : undefined;
     const user = await fastify.prisma.user.update({
       where: { id: req.params.id },
       data: {
         ...(isAdmin        !== undefined ? { isAdmin }        : {}),
         ...(certifications !== undefined ? { certifications } : {}),
+        ...(passwordHash   !== undefined ? { passwordHash }   : {}),
       },
       select: { id: true, displayName: true, email: true, isAdmin: true, certifications: true },
     });

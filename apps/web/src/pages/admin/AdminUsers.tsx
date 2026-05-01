@@ -3,12 +3,12 @@ import {
   Grid, Column,
   Button, Tag,
   SkeletonText, InlineNotification,
-  Modal, TextInput,
+  Modal, TextInput, PasswordInput, Checkbox,
   DataTable, Table, TableHead, TableRow, TableHeader, TableBody, TableCell,
   TableToolbar, TableToolbarContent,
   CodeSnippet,
 } from '@carbon/react';
-import { Add, TrashCan, UserAdmin } from '@carbon/icons-react';
+import { Add, TrashCan, UserAdmin, Password } from '@carbon/icons-react';
 import { TEST_MODE } from '../../mockData.js';  // DELETE with mockData.ts
 import AdminNav from './AdminNav.js';
 
@@ -30,10 +30,10 @@ interface PendingInvite {
 }
 
 const headers = [
-  { key: 'name',   header: 'Name' },
-  { key: 'email',  header: 'Email' },
-  { key: 'role',   header: 'Role' },
-  { key: 'certs',  header: 'Certifications' },
+  { key: 'name',    header: 'Name' },
+  { key: 'email',   header: 'Email' },
+  { key: 'role',    header: 'Role' },
+  { key: 'certs',   header: 'Certifications' },
   { key: 'actions', header: '' },
 ];
 
@@ -50,6 +50,21 @@ export default function AdminUsers() {
   const [inviteSaving, setInviteSaving] = useState(false);
   const [inviteError,  setInviteError]  = useState<string | null>(null);
   const [createdUrl,   setCreatedUrl]   = useState<string | null>(null);
+
+  // Create user modal
+  const [createModal,     setCreateModal]     = useState(false);
+  const [createName,      setCreateName]      = useState('');
+  const [createEmail,     setCreateEmail]     = useState('');
+  const [createPassword,  setCreatePassword]  = useState('');
+  const [createIsAdmin,   setCreateIsAdmin]   = useState(false);
+  const [createSaving,    setCreateSaving]    = useState(false);
+  const [createError,     setCreateError]     = useState<string | null>(null);
+
+  // Reset password modal
+  const [resetTarget,   setResetTarget]   = useState<AdminUser | null>(null);
+  const [resetPassword, setResetPassword] = useState('');
+  const [resetSaving,   setResetSaving]   = useState(false);
+  const [resetError,    setResetError]    = useState<string | null>(null);
 
   const load = useCallback(() => {
     if (TEST_MODE) { setLoading(false); return; }
@@ -126,6 +141,75 @@ export default function AdminUsers() {
     setCreatedUrl(null);
   };
 
+  const openCreateModal = () => {
+    setCreateName('');
+    setCreateEmail('');
+    setCreatePassword('');
+    setCreateIsAdmin(false);
+    setCreateError(null);
+    setCreateModal(true);
+  };
+
+  const createUser = async () => {
+    if (!createName.trim() || !createEmail.trim() || !createPassword) {
+      setCreateError('All fields are required.');
+      return;
+    }
+    if (TEST_MODE) { setCreateModal(false); return; }
+    setCreateSaving(true);
+    setCreateError(null);
+    try {
+      const res = await fetch('/api/admin/users', {
+        method:      'POST',
+        credentials: 'include',
+        headers:     { 'Content-Type': 'application/json' },
+        body:        JSON.stringify({ displayName: createName.trim(), email: createEmail.trim(), password: createPassword, isAdmin: createIsAdmin }),
+      });
+      if (!res.ok) {
+        const err = await res.json() as { message?: string };
+        setCreateError(err.message ?? 'Could not create user.');
+        return;
+      }
+      setCreateModal(false);
+      load();
+    } catch {
+      setCreateError('Network error.');
+    } finally {
+      setCreateSaving(false);
+    }
+  };
+
+  const openResetModal = (user: AdminUser) => {
+    setResetTarget(user);
+    setResetPassword('');
+    setResetError(null);
+  };
+
+  const doResetPassword = async () => {
+    if (!resetTarget || !resetPassword) { setResetError('Password is required.'); return; }
+    if (TEST_MODE) { setResetTarget(null); return; }
+    setResetSaving(true);
+    setResetError(null);
+    try {
+      const res = await fetch(`/api/admin/users/${resetTarget.id}`, {
+        method:      'PATCH',
+        credentials: 'include',
+        headers:     { 'Content-Type': 'application/json' },
+        body:        JSON.stringify({ password: resetPassword }),
+      });
+      if (!res.ok) {
+        const err = await res.json() as { message?: string };
+        setResetError(err.message ?? 'Could not reset password.');
+        return;
+      }
+      setResetTarget(null);
+    } catch {
+      setResetError('Network error.');
+    } finally {
+      setResetSaving(false);
+    }
+  };
+
   const rows = users.map((u) => ({
     id:    u.id,
     name:  u.displayName,
@@ -137,15 +221,19 @@ export default function AdminUsers() {
       ? <span style={{ fontSize: '0.8rem' }}>{u.certifications.join(', ')}</span>
       : <span style={{ color: 'var(--cds-text-placeholder)', fontSize: '0.8rem' }}>None</span>,
     actions: (
-      <Button
-        kind="ghost"
-        size="sm"
-        renderIcon={UserAdmin}
-        onClick={() => toggleAdmin(u)}
-        title={u.isAdmin ? 'Remove admin' : 'Make admin'}
-      >
-        {u.isAdmin ? 'Remove admin' : 'Make admin'}
-      </Button>
+      <div style={{ display: 'flex', gap: '0.25rem' }}>
+        <Button
+          kind="ghost" size="sm" renderIcon={UserAdmin}
+          onClick={() => toggleAdmin(u)}
+          title={u.isAdmin ? 'Remove admin' : 'Make admin'}
+        >
+          {u.isAdmin ? 'Remove admin' : 'Make admin'}
+        </Button>
+        <Button
+          kind="ghost" size="sm" renderIcon={Password} iconDescription="Reset password"
+          hasIconOnly onClick={() => openResetModal(u)}
+        />
+      </div>
     ),
   }));
 
@@ -160,9 +248,14 @@ export default function AdminUsers() {
           <h1 style={{ fontFamily: 'IBM Plex Sans, sans-serif', fontSize: '1.5rem', fontWeight: 600, margin: 0 }}>
             Users
           </h1>
-          <Button size="md" renderIcon={Add} onClick={() => setInviteModal(true)}>
-            Invite User
-          </Button>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <Button size="md" kind="secondary" renderIcon={Add} onClick={openCreateModal}>
+              Create User
+            </Button>
+            <Button size="md" renderIcon={Add} onClick={() => setInviteModal(true)}>
+              Invite User
+            </Button>
+          </div>
         </div>
       </Column>
 
@@ -229,6 +322,77 @@ export default function AdminUsers() {
           </DataTable>
         )}
       </Column>
+
+      {/* Create user modal */}
+      <Modal
+        open={createModal}
+        modalHeading="Create User"
+        primaryButtonText={createSaving ? 'Creating…' : 'Create'}
+        secondaryButtonText="Cancel"
+        onRequestSubmit={createUser}
+        onRequestClose={() => setCreateModal(false)}
+        onSecondarySubmit={() => setCreateModal(false)}
+        primaryButtonDisabled={createSaving}
+        size="sm"
+      >
+        {createError && (
+          <InlineNotification kind="error" title="Error" subtitle={createError} hideCloseButton style={{ marginBottom: '1rem' }} />
+        )}
+        <TextInput
+          id="create-name"
+          labelText="Full name *"
+          value={createName}
+          onChange={(e) => setCreateName(e.target.value)}
+          style={{ marginBottom: '1rem' }}
+        />
+        <TextInput
+          id="create-email"
+          labelText="Email address *"
+          type="email"
+          value={createEmail}
+          onChange={(e) => setCreateEmail(e.target.value)}
+          style={{ marginBottom: '1rem' }}
+        />
+        <PasswordInput
+          id="create-password"
+          labelText="Password (min 8 characters) *"
+          value={createPassword}
+          onChange={(e) => setCreatePassword(e.target.value)}
+          style={{ marginBottom: '1rem' }}
+        />
+        <Checkbox
+          id="create-isadmin"
+          labelText="Make this user an admin"
+          checked={createIsAdmin}
+          onChange={(_: unknown, { checked }: { checked: boolean }) => setCreateIsAdmin(checked)}
+        />
+      </Modal>
+
+      {/* Reset password modal */}
+      <Modal
+        open={resetTarget !== null}
+        modalHeading="Reset Password"
+        primaryButtonText={resetSaving ? 'Saving…' : 'Set Password'}
+        secondaryButtonText="Cancel"
+        onRequestSubmit={doResetPassword}
+        onRequestClose={() => setResetTarget(null)}
+        onSecondarySubmit={() => setResetTarget(null)}
+        primaryButtonDisabled={resetSaving}
+        size="sm"
+      >
+        {resetError && (
+          <InlineNotification kind="error" title="Error" subtitle={resetError} hideCloseButton style={{ marginBottom: '1rem' }} />
+        )}
+        <p style={{ marginBottom: '1rem', fontSize: '0.875rem' }}>
+          Setting a new password for <strong>{resetTarget?.displayName}</strong> ({resetTarget?.email}).
+        </p>
+        <PasswordInput
+          id="reset-password"
+          labelText="New password (min 8 characters)"
+          value={resetPassword}
+          onChange={(e) => setResetPassword(e.target.value)}
+        />
+      </Modal>
 
       {/* Invite modal */}
       <Modal
