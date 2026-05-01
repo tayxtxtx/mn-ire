@@ -16,7 +16,10 @@
  * The Slack user ID is stored on User.slackUserId. If missing, DMs are skipped
  * gracefully — no hard dependency on Slack being wired up per-member.
  */
-import { App } from '@slack/bolt';
+import { createRequire } from 'module';
+import type { App } from '@slack/bolt';
+// @slack/bolt is CommonJS — createRequire needed for named imports in ESM
+const { App: BoltApp } = createRequire(import.meta.url)('@slack/bolt') as typeof import('@slack/bolt');
 import type { Booking, Resource, Shop, User } from '@makenashville/db';
 import { getSetting } from './settings.js';
 
@@ -43,7 +46,7 @@ function isSlackConfigured(): boolean {
 function getApp(): App | null {
   if (!isSlackConfigured()) return null;
   if (!_app) {
-    _app = new App({
+    _app = new BoltApp({
       token:         getSetting('SLACK_BOT_TOKEN'),
       appToken:      getSetting('SLACK_APP_TOKEN'),
       signingSecret: getSetting('SLACK_SIGNING_SECRET'),

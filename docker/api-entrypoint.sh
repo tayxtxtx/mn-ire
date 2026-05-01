@@ -16,7 +16,7 @@ fi
 
 # Apply schema to DB (idempotent — safe to run on every startup)
 echo "[startup] Applying database schema..."
-pnpm exec prisma db push --schema packages/db/prisma/schema.prisma --skip-generate --accept-data-loss 2>&1 | grep -v "^$" || true
+node_modules/.bin/prisma db push --schema packages/db/prisma/schema.prisma --skip-generate --accept-data-loss 2>&1 | grep -v "^$" || true
 
 echo "[startup] Starting API..."
 exec node apps/api/dist/index.js
