@@ -158,6 +158,10 @@ fi
 # Load .env into the current shell so all subsequent steps see DATABASE_URL etc.
 set -a; source .env; set +a
 
+# Symlink .env into packages/db/ so Prisma's built-in dotenv loader finds it
+# when running from that directory (seed, studio, etc.)
+ln -sf "$REPO_DIR/.env" "$REPO_DIR/packages/db/.env"
+
 # =============================================================================
 # 3. Docker Compose — Postgres + Redis
 # =============================================================================

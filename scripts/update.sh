@@ -21,8 +21,10 @@ git pull
 info "Installing dependencies..."
 pnpm install --frozen-lockfile
 
-info "Running migrations..."
 set -a; source .env; set +a
+ln -sf "$REPO_DIR/.env" "$REPO_DIR/packages/db/.env"
+
+info "Running migrations..."
 pnpm db:migrate:prod
 
 info "Generating Prisma client..."
