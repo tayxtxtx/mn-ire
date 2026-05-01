@@ -19,7 +19,7 @@ export default function Setup() {
   useEffect(() => {
     fetch('/api/setup/status')
       .then((r) => r.json() as Promise<{ required: boolean }>)
-      .then(({ required }) => { if (!required) navigate('/'); })
+      .then(({ required }) => { if (required === false) navigate('/'); })
       .catch(() => {})
       .finally(() => setChecking(false));
   }, [navigate]);
