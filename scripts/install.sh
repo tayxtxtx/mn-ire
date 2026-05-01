@@ -31,6 +31,14 @@ info "Repo root: $REPO_DIR"
 # Detect server's public IP for the initial access URL
 SERVER_IP="$(curl -fsSL https://api.ipify.org 2>/dev/null || hostname -I | awk '{print $1}')"
 
+# If no .env exists yet and the Postgres volume is already initialised (from a
+# previous failed run), wipe the volume so it re-initialises with the new password.
+if [[ ! -f .env ]] && docker volume inspect mn-bookingsys_pgdata &>/dev/null; then
+  warn "Existing Postgres volume found without a matching .env — removing it so"
+  warn "Postgres re-initialises with the new auto-generated credentials."
+  docker compose down -v >/dev/null 2>&1 || true
+fi
+
 # =============================================================================
 # 1. System dependencies
 # =============================================================================
@@ -89,20 +97,10 @@ fi
 success "Certbot ready"
 
 # =============================================================================
-# 2. Docker Compose — Postgres + Redis
+# 2. Generate .env — credentials must exist BEFORE Docker starts Postgres
 # =============================================================================
 echo
-echo -e "${BOLD}── Step 2: Postgres + Redis ──────────────────────────────────────────────${RESET}"
-
-info "Starting Postgres and Redis..."
-docker compose up -d
-success "Postgres + Redis running."
-
-# =============================================================================
-# 3. Generate .env (no prompts — configure everything via the admin dashboard)
-# =============================================================================
-echo
-echo -e "${BOLD}── Step 3: Environment ───────────────────────────────────────────────────${RESET}"
+echo -e "${BOLD}── Step 2: Environment ───────────────────────────────────────────────────${RESET}"
 
 if [[ -f .env ]]; then
   warn ".env already exists — skipping generation."
@@ -110,14 +108,13 @@ else
   DB_PASS="$(openssl rand -hex 16)"
   SESSION_SECRET="$(openssl rand -hex 32)"
 
-  # Update docker-compose DB credentials to match
+  # Patch docker-compose.yml so Postgres initialises with these credentials
   if grep -q 'POSTGRES_PASSWORD' docker-compose.yml 2>/dev/null; then
     sed -i \
       -e "s/POSTGRES_PASSWORD:.*/POSTGRES_PASSWORD: ${DB_PASS}/" \
       -e "s/POSTGRES_USER:.*/POSTGRES_USER: mnbooking/" \
       -e "s/POSTGRES_DB:.*/POSTGRES_DB: mnbooking/" \
       docker-compose.yml
-    docker compose up -d >/dev/null 2>&1
   fi
 
   cat > .env <<EOF
@@ -133,7 +130,6 @@ API_PORT=4000
 API_PUBLIC_URL=http://${SERVER_IP}:4000
 WEB_PUBLIC_URL=http://${SERVER_IP}
 KIOSK_PUBLIC_URL=http://${SERVER_IP}/kiosk
-SESSION_SECRET=${SESSION_SECRET}
 
 AUTHENTIK_ISSUER_URL=
 AUTHENTIK_CLIENT_ID=
@@ -159,8 +155,20 @@ EOF
   success ".env generated with random DB password and session secret."
 fi
 
-# Load .env into the current shell so Prisma and seed scripts can see DATABASE_URL etc.
+# Load .env into the current shell so all subsequent steps see DATABASE_URL etc.
 set -a; source .env; set +a
+
+# =============================================================================
+# 3. Docker Compose — Postgres + Redis
+# =============================================================================
+echo
+echo -e "${BOLD}── Step 3: Postgres + Redis ──────────────────────────────────────────────${RESET}"
+
+info "Starting Postgres and Redis..."
+docker compose up -d
+# Give Postgres a moment to finish initialising on a brand-new volume
+sleep 3
+success "Postgres + Redis running."
 
 # =============================================================================
 # 4. Dependencies, migrations, seed
