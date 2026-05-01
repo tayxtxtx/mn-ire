@@ -16,6 +16,11 @@ const CACHE_TTL_MS = 60_000;
 // ── Env-var fallback map ───────────────────────────────────────────────────
 
 const ENV_FALLBACK: Record<string, string> = {
+  // Server URLs
+  API_PUBLIC_URL:   env.API_PUBLIC_URL,
+  WEB_PUBLIC_URL:   env.WEB_PUBLIC_URL,
+  KIOSK_PUBLIC_URL: env.KIOSK_PUBLIC_URL,
+
   // Slack bot
   SLACK_BOT_TOKEN:               env.SLACK_BOT_TOKEN,
   SLACK_APP_TOKEN:               env.SLACK_APP_TOKEN,
@@ -98,7 +103,7 @@ export function getSettingNumber(key: string, hardFallback: number): number {
 
 // ── Catalog (used by the admin settings API) ──────────────────────────────
 
-export type SettingGroup = 'booking' | 'slack' | 'gcal' | 'auth';
+export type SettingGroup = 'server' | 'booking' | 'slack' | 'gcal' | 'auth';
 
 export interface SettingMeta {
   key:             string;
@@ -110,11 +115,16 @@ export interface SettingMeta {
 }
 
 export const SETTINGS_CATALOG: SettingMeta[] = [
+  // ── Server URLs ───────────────────────────────────────────────────────────
+  { key: 'API_PUBLIC_URL',   label: 'API public URL',            group: 'server', isSecret: false, requiresRestart: true, hint: 'e.g. https://api.yourdomain.com' },
+  { key: 'WEB_PUBLIC_URL',   label: 'Member portal public URL',  group: 'server', isSecret: false, requiresRestart: true, hint: 'e.g. https://app.yourdomain.com' },
+  { key: 'KIOSK_PUBLIC_URL', label: 'Kiosk public URL',          group: 'server', isSecret: false, requiresRestart: true, hint: 'e.g. https://kiosk.yourdomain.com' },
+  { key: 'ADMIN_EMAILS',     label: 'Auto-admin emails',         group: 'server', isSecret: false, requiresRestart: false, hint: 'Comma-separated emails that receive isAdmin=true on first login.' },
+
   // ── Booking rules ────────────────────────────────────────────────────────
   { key: 'DEFAULT_BOOKING_WINDOW_DAYS',   label: 'Booking window (days)',         group: 'booking', isSecret: false, requiresRestart: false, hint: 'How far ahead members can book. Default: 7' },
   { key: 'DEFAULT_NO_SHOW_GRACE_MINUTES', label: 'No-show grace period (minutes)', group: 'booking', isSecret: false, requiresRestart: false, hint: 'Minutes after start time before a booking is marked no-show. Default: 15' },
   { key: 'HIGH_DEMAND_COOLDOWN_HOURS',    label: 'High-demand cooldown (hours)',   group: 'booking', isSecret: false, requiresRestart: false, hint: 'Minimum gap between sessions on high-demand tools. Default: 4' },
-  { key: 'ADMIN_EMAILS',                  label: 'Auto-admin emails',             group: 'booking', isSecret: false, requiresRestart: false, hint: 'Comma-separated emails that receive isAdmin=true on first login.' },
 
   // ── Slack bot ─────────────────────────────────────────────────────────────
   { key: 'SLACK_BOT_TOKEN',      label: 'Bot Token',       group: 'slack', isSecret: true,  requiresRestart: false, hint: 'Starts with xoxb-' },

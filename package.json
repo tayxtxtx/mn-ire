@@ -14,6 +14,7 @@
     "lint": "turbo run lint",
     "db:generate": "pnpm -F @makenashville/db generate",
     "db:migrate": "pnpm -F @makenashville/db migrate",
+    "db:migrate:prod": "pnpm -F @makenashville/db migrate:deploy",
     "db:seed": "pnpm -F @makenashville/db seed",
     "db:studio": "pnpm -F @makenashville/db studio"
   },

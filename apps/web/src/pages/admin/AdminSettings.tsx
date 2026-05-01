@@ -11,7 +11,7 @@ import AdminNav from './AdminNav.js';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
-type SettingGroup = 'booking' | 'slack' | 'gcal' | 'auth';
+type SettingGroup = 'server' | 'booking' | 'slack' | 'gcal' | 'auth';
 
 interface SettingRow {
   key:             string;
@@ -29,12 +29,13 @@ interface SettingRow {
 
 const MASK = '••••••••';
 const GROUP_LABELS: Record<SettingGroup, string> = {
+  server:  'Server',
   booking: 'Booking Rules',
   slack:   'Slack Bot',
   gcal:    'Google Calendar',
   auth:    'Auth Provider',
 };
-const GROUP_ORDER: SettingGroup[] = ['booking', 'slack', 'gcal', 'auth'];
+const GROUP_ORDER: SettingGroup[] = ['server', 'booking', 'slack', 'gcal', 'auth'];
 
 function sourceTag(source: 'db' | 'env' | 'none') {
   if (source === 'db')  return <Tag type="blue"  size="sm">DB</Tag>;
