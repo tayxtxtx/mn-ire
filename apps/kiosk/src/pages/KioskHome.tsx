@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import {
   Grid, Column, Tile, Button,
   TextInput, Checkbox,
@@ -17,16 +17,28 @@ interface KioskResource {
 
 export default function KioskHome() {
   const navigate = useNavigate();
+  const { shopSlug } = useParams<{ shopSlug?: string }>();
 
-  // ── Resource list ──────────────────────────────────────────────────────────
+  // ── Shop name (when in per-shop mode) ─────────────────────────────────────
+  const [shopName, setShopName] = useState<string | null>(null);
+  useEffect(() => {
+    if (!shopSlug) return;
+    fetch(`/api/shops/${encodeURIComponent(shopSlug)}`)
+      .then((r) => r.ok ? r.json() as Promise<{ name: string }> : Promise.reject())
+      .then((d) => setShopName(d.name))
+      .catch(() => setShopName(shopSlug));
+  }, [shopSlug]);
+
+  // ── Resource list (only used in general / no-slug mode) ───────────────────
   const [resources, setResources] = useState<KioskResource[]>([]);
   useEffect(() => {
+    if (shopSlug) return;
     if (TEST_MODE) { setResources(MOCK_RESOURCES); return; }
     fetch('/api/walkin/resources')
       .then((r) => r.json())
       .then((d) => setResources(d as KioskResource[]))
       .catch(() => {});
-  }, []);
+  }, [shopSlug]);
 
   // ── Form state ─────────────────────────────────────────────────────────────
   const [firstName,         setFirstName]         = useState('');
@@ -102,6 +114,8 @@ export default function KioskHome() {
   };
 
   // ── Sign-in form ───────────────────────────────────────────────────────────
+  const displayShopName = shopName ?? shopSlug ?? null;
+
   return (
     <Grid fullWidth style={{ minHeight: '100vh', alignContent: 'start', padding: '2rem 0' }}>
       <Column
@@ -111,7 +125,7 @@ export default function KioskHome() {
       >
         <div style={{ marginBottom: '1.5rem' }}>
           <h1 style={{ fontFamily: 'IBM Plex Sans, sans-serif', fontSize: '1.75rem', fontWeight: 700 }}>
-            MakeNashville Sign-In{TEST_MODE ? ' — TEST MODE' : ''}
+            {displayShopName ? `${displayShopName} Sign-In` : 'MakeNashville Sign-In'}{TEST_MODE ? ' — TEST MODE' : ''}
           </h1>
           <p style={{ color: 'var(--cds-text-secondary)', marginTop: '0.25rem' }}>
             Please fill out this form before using any equipment.
@@ -168,21 +182,23 @@ export default function KioskHome() {
             />
           </div>
 
-          {/* Tool selector */}
-          <div style={{ marginBottom: '1.25rem' }}>
-            <Select
-              id="resource"
-              labelText="Tool you'll be using today (optional)"
-              value={resourceId}
-              onChange={(e) => setResourceId(e.target.value)}
-              size="lg"
-            >
-              <SelectItem value=""    text="— Not selected —" />
-              {resources.map((r) => (
-                <SelectItem key={r.id} value={r.id} text={`${r.shop.name} — ${r.name}`} />
-              ))}
-            </Select>
-          </div>
+          {/* Tool selector — only shown in general (no shop slug) mode */}
+          {!shopSlug && (
+            <div style={{ marginBottom: '1.25rem' }}>
+              <Select
+                id="resource"
+                labelText="Tool you'll be using today (optional)"
+                value={resourceId}
+                onChange={(e) => setResourceId(e.target.value)}
+                size="lg"
+              >
+                <SelectItem value=""    text="— Not selected —" />
+                {resources.map((r) => (
+                  <SelectItem key={r.id} value={r.id} text={`${r.shop.name} — ${r.name}`} />
+                ))}
+              </Select>
+            </div>
+          )}
 
           {/* Orientation checkbox */}
           <div style={{ marginBottom: '1.5rem' }}>

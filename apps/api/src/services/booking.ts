@@ -240,30 +240,49 @@ export async function markNoShow(prisma: PrismaClient, bookingId: string) {
   });
 }
 
-/** Build the "Who's In" snapshot from active CHECKED_IN bookings. */
+/** Build the "Who's In" snapshot from active CHECKED_IN bookings and walk-ins. */
 export async function getWhosIn(prisma: PrismaClient) {
   const now = new Date();
-  const bookings = await prisma.booking.findMany({
-    where: {
-      status: 'CHECKED_IN',
-      endsAt: { gt: now },
-    },
-    include: { user: true, resource: { include: { shop: true } } },
-    orderBy: { endsAt: 'asc' },
-  });
+  const [bookings, walkIns] = await Promise.all([
+    prisma.booking.findMany({
+      where: { status: 'CHECKED_IN', endsAt: { gt: now } },
+      include: { user: true, resource: { include: { shop: true } } },
+      orderBy: { endsAt: 'asc' },
+    }),
+    prisma.walkIn.findMany({
+      where: { signedOutAt: null, endsAt: { gt: now }, resourceId: { not: null } },
+      include: { resource: { include: { shop: true } } },
+      orderBy: { endsAt: 'asc' },
+    }),
+  ]);
 
-  return bookings.map((b) => ({
-    bookingId: b.id,
-    userId: b.userId,
-    displayName: b.user.displayName,
-    resourceId: b.resourceId,
-    resourceName: b.resource.name,
-    shopName: b.resource.shop.name,
-    startsAt: b.startsAt.toISOString(),
-    endsAt: b.endsAt.toISOString(),
-    minutesRemaining: Math.max(
-      0,
-      Math.floor((b.endsAt.getTime() - now.getTime()) / 60_000),
-    ),
+  const bookingEntries = bookings.map((b) => ({
+    bookingId:        b.id,
+    userId:           b.userId,
+    displayName:      b.user.displayName,
+    resourceId:       b.resourceId,
+    resourceName:     b.resource.name,
+    shopName:         b.resource.shop.name,
+    startsAt:         b.startsAt.toISOString(),
+    endsAt:           b.endsAt.toISOString(),
+    minutesRemaining: Math.max(0, Math.floor((b.endsAt.getTime() - now.getTime()) / 60_000)),
+    type:             'booking' as const,
   }));
+
+  const walkInEntries = walkIns
+    .filter((w) => w.resource && w.endsAt)
+    .map((w) => ({
+      bookingId:        w.id,
+      userId:           null,
+      displayName:      `${w.firstName} ${w.lastName} (walk-in)`,
+      resourceId:       w.resourceId!,
+      resourceName:     w.resource!.name,
+      shopName:         w.resource!.shop.name,
+      startsAt:         w.signedInAt.toISOString(),
+      endsAt:           w.endsAt!.toISOString(),
+      minutesRemaining: Math.max(0, Math.floor((w.endsAt!.getTime() - now.getTime()) / 60_000)),
+      type:             'walkin' as const,
+    }));
+
+  return [...bookingEntries, ...walkInEntries].sort((a, b) => a.endsAt.localeCompare(b.endsAt));
 }

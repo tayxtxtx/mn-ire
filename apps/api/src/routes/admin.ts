@@ -25,7 +25,7 @@ const adminRoutes: FastifyPluginAsync = async (fastify) => {
     const horizon = new Date(now.getTime() + 60 * 60_000);
     const shopSlug = req.query.shop?.trim() || undefined;
 
-    const [shops, whosIn, upcoming] = await Promise.all([
+    const [shops, checkedIn, walkIns, upcoming] = await Promise.all([
       fastify.prisma.shop.findMany({
         where:   shopSlug ? { slug: shopSlug } : {},
         orderBy: { name: 'asc' },
@@ -50,6 +50,20 @@ const adminRoutes: FastifyPluginAsync = async (fastify) => {
         orderBy: { endsAt: 'asc' },
       }),
 
+      fastify.prisma.walkIn.findMany({
+        where: {
+          signedOutAt: null,
+          endsAt:      { gt: now },
+          resourceId:  { not: null },
+          ...(shopSlug ? { resource: { shop: { slug: shopSlug } } } : {}),
+        },
+        select: {
+          id: true, firstName: true, lastName: true,
+          resourceId: true, endsAt: true,
+        },
+        orderBy: { endsAt: 'asc' },
+      }),
+
       fastify.prisma.booking.findMany({
         where: {
           status:   'CONFIRMED',
@@ -64,16 +78,23 @@ const adminRoutes: FastifyPluginAsync = async (fastify) => {
       }),
     ]);
 
-    const whosInByResource = new Map(
-      whosIn.map((b) => [
-        b.resourceId,
-        {
-          memberName:       b.user.displayName,
-          endsAt:           b.endsAt.toISOString(),
-          minutesRemaining: Math.max(0, Math.floor((b.endsAt.getTime() - now.getTime()) / 60_000)),
-        },
-      ]),
-    );
+    // Merge checked-in bookings and active walk-ins into one map, bookings win on conflict
+    const whosInByResource = new Map<string, { memberName: string; endsAt: string; minutesRemaining: number }>();
+    for (const w of walkIns) {
+      if (!w.resourceId || !w.endsAt) continue;
+      whosInByResource.set(w.resourceId, {
+        memberName:       `${w.firstName} ${w.lastName}`,
+        endsAt:           w.endsAt.toISOString(),
+        minutesRemaining: Math.max(0, Math.floor((w.endsAt.getTime() - now.getTime()) / 60_000)),
+      });
+    }
+    for (const b of checkedIn) {
+      whosInByResource.set(b.resourceId, {
+        memberName:       b.user.displayName,
+        endsAt:           b.endsAt.toISOString(),
+        minutesRemaining: Math.max(0, Math.floor((b.endsAt.getTime() - now.getTime()) / 60_000)),
+      });
+    }
 
     const upcomingByResource = new Map<string, { memberName: string; startsAt: string }[]>();
     for (const b of upcoming) {
@@ -84,7 +105,7 @@ const adminRoutes: FastifyPluginAsync = async (fastify) => {
 
     reply.send({
       asOf:        now.toISOString(),
-      activeSessions: whosIn.length,
+      activeSessions: whosInByResource.size,
       shops: shops.map((shop) => ({
         id:        shop.id,
         name:      shop.name,

@@ -63,8 +63,8 @@ const walkInRoutes: FastifyPluginAsync = async (fastify) => {
     reply.code(201).send({ ...entry, endsAt: entry.endsAt?.toISOString() ?? null });
   });
 
-  /** PATCH /api/walkin/:id/extend — push endsAt forward. Unauthenticated (kiosk). */
-  fastify.patch<{
+  /** POST /api/walkin/:id/extend — push endsAt forward. Unauthenticated (kiosk). */
+  fastify.post<{
     Params: { id: string };
     Body:   { minutes?: number };
   }>('/api/walkin/:id/extend', async (req, reply) => {

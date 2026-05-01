@@ -94,7 +94,7 @@ export default function App() {
     : (payload?.shops ?? []);
 
   const allResources = shopsToRender
-    .flatMap((s) => s.resources.map((r) => ({ ...r, shopName: s.name })))
+    .flatMap((s) => s.resources.map((r) => ({ ...r, shopName: s.name, shopSlug: s.slug })))
     .filter((r) => (RESOURCE_ID ? r.id === RESOURCE_ID : true));
 
   const cols = allResources.length <= 1  ? 1
@@ -136,7 +136,19 @@ export default function App() {
           flexShrink:     0,
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: '1rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          {RESOURCE_ID && (
+            <button
+              onClick={() => { window.location.href = SHOP_SLUG ? `/${SHOP_SLUG}` : '/'; }}
+              style={{
+                background: 'transparent', border: '1px solid #525252', color: '#C6C6C6',
+                borderRadius: '0.25rem', padding: '0.25rem 0.625rem',
+                cursor: 'pointer', fontSize: '0.75rem', fontFamily: 'inherit',
+              }}
+            >
+              ← Back
+            </button>
+          )}
           <span style={{ fontSize: '1.125rem', fontWeight: 600 }}>MakeNashville</span>
           <span style={{ fontSize: '0.875rem', color: '#8D8D8D' }}>
             {subtitle}{TEST_MODE ? ' — TEST MODE' : ''}
@@ -229,7 +241,12 @@ export default function App() {
         )}
 
         {allResources.map((r) => (
-          <div key={r.id} style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
+          <div
+            key={r.id}
+            style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem', cursor: RESOURCE_ID ? 'default' : 'pointer' }}
+            onClick={RESOURCE_ID ? undefined : () => { window.location.href = `/${r.shopSlug}?resource=${r.id}`; }}
+            title={RESOURCE_ID ? undefined : `View ${r.name} fullscreen`}
+          >
             {/* Show shop label only on the all-shops view */}
             {!SHOP_SLUG && (
               <div style={{ fontSize: '0.7rem', color: '#8D8D8D', textTransform: 'uppercase', letterSpacing: '0.1em' }}>

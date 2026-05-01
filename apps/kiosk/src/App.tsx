@@ -14,6 +14,8 @@ export default function App() {
         <Route path="/checkin" element={<CheckIn />} />
         <Route path="/whos-in" element={<WhosIn />} />
         <Route path="/session" element={<ActiveSession />} />
+        {/* Per-shop kiosk: /:shopSlug shows a sign-in form scoped to that shop */}
+        <Route path="/:shopSlug" element={<KioskHome />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Theme>
