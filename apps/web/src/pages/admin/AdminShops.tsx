@@ -397,6 +397,10 @@ export default function AdminShops() {
                                 </td>
                                 <td style={{ padding: '0.375rem 0.5rem' }}>
                                   <div style={{ display: 'flex', gap: '0.25rem' }}>
+                                    <Button
+                                      kind="ghost" size="sm" renderIcon={Screen} iconDescription="Status screen" hasIconOnly
+                                      onClick={() => window.open(`http://${window.location.hostname}:82/${shop.slug}?resource=${r.id}`, '_blank')}
+                                    />
                                     <Button kind="ghost" size="sm" renderIcon={Edit} iconDescription="Edit" hasIconOnly onClick={() => openEditResource(r)} />
                                     <Button kind="danger--ghost" size="sm" renderIcon={TrashCan} iconDescription="Delete" hasIconOnly onClick={() => setDeletingResource(r)} />
                                   </div>

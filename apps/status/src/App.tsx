@@ -7,7 +7,8 @@ const POLL_MS     = 30_000;
 const RETRY_MS    = 10_000;
 const DOWN_THRESH = 2;
 
-const TEST_MODE = new URLSearchParams(window.location.search).has('test');
+const TEST_MODE   = new URLSearchParams(window.location.search).has('test');
+const RESOURCE_ID = new URLSearchParams(window.location.search).get('resource');
 
 // "/woodshop" → "woodshop", "/" or "" → null (all shops)
 const SHOP_SLUG = window.location.pathname.replace(/^\//, '').trim() || null;
@@ -33,10 +34,25 @@ function testPayload(): StatusPayload {
 }
 
 export default function App() {
-  const [payload,     setPayload]     = useState<StatusPayload | null>(TEST_MODE ? testPayload() : null);
-  const [apiDown,     setApiDown]     = useState(false);
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(TEST_MODE ? new Date() : null);
+  const [payload,      setPayload]      = useState<StatusPayload | null>(TEST_MODE ? testPayload() : null);
+  const [apiDown,      setApiDown]      = useState(false);
+  const [lastUpdated,  setLastUpdated]  = useState<Date | null>(TEST_MODE ? new Date() : null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const failCount = useRef(0);
+
+  useEffect(() => {
+    const handler = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener('fullscreenchange', handler);
+    return () => document.removeEventListener('fullscreenchange', handler);
+  }, []);
+
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      void document.documentElement.requestFullscreen();
+    } else {
+      void document.exitFullscreen();
+    }
+  };
 
   const fetchStatus = () => {
     if (TEST_MODE) return;
@@ -77,20 +93,24 @@ export default function App() {
     ? (displayedShop ? [displayedShop] : [])
     : (payload?.shops ?? []);
 
-  const allResources = shopsToRender.flatMap((s) =>
-    s.resources.map((r) => ({ ...r, shopName: s.name })),
-  );
+  const allResources = shopsToRender
+    .flatMap((s) => s.resources.map((r) => ({ ...r, shopName: s.name })))
+    .filter((r) => (RESOURCE_ID ? r.id === RESOURCE_ID : true));
 
-  const cols = allResources.length <= 4  ? 2
+  const cols = allResources.length <= 1  ? 1
+             : allResources.length <= 4  ? 2
              : allResources.length <= 9  ? 3
              : 4;
 
-  // Subtitle: shop name when filtering, generic otherwise
-  const subtitle = displayedShop
-    ? displayedShop.name
-    : SHOP_SLUG
-      ? `Unknown Shop: ${SHOP_SLUG}`
-      : 'Facility Status';
+  // Subtitle: resource name > shop name > unknown shop > generic
+  const displayedResource = RESOURCE_ID ? allResources[0] ?? null : null;
+  const subtitle = displayedResource
+    ? displayedResource.name
+    : displayedShop
+      ? displayedShop.name
+      : SHOP_SLUG
+        ? `Unknown Shop: ${SHOP_SLUG}`
+        : 'Facility Status';
 
   return (
     <div
@@ -123,7 +143,7 @@ export default function App() {
           </span>
         </div>
 
-        <div style={{ display: 'flex', gap: '2rem', fontSize: '0.875rem', color: '#8D8D8D' }}>
+        <div style={{ display: 'flex', gap: '2rem', alignItems: 'center', fontSize: '0.875rem', color: '#8D8D8D' }}>
           {payload && !SHOP_SLUG && (
             <span>{payload.activeSessions} active session{payload.activeSessions !== 1 ? 's' : ''}</span>
           )}
@@ -133,6 +153,21 @@ export default function App() {
           <span style={{ color: '#F4F4F4', fontVariantNumeric: 'tabular-nums' }}>
             <Clock />
           </span>
+          <button
+            onClick={toggleFullscreen}
+            style={{
+              background: 'transparent',
+              border: '1px solid #525252',
+              color: '#C6C6C6',
+              borderRadius: '0.25rem',
+              padding: '0.25rem 0.625rem',
+              cursor: 'pointer',
+              fontSize: '0.75rem',
+              fontFamily: 'inherit',
+            }}
+          >
+            {isFullscreen ? '⛶ Exit' : '⛶ Fullscreen'}
+          </button>
         </div>
       </div>
 
