@@ -1,0 +1,12 @@
+FROM node:20-alpine AS build
+RUN npm install -g pnpm
+WORKDIR /app
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY packages/ packages/
+COPY apps/status/ apps/status/
+RUN pnpm install --frozen-lockfile
+RUN pnpm --filter @makenashville/status build
+
+FROM nginx:alpine
+COPY --from=build /app/apps/status/dist /usr/share/nginx/html
+COPY docker/nginx.frontend.conf /etc/nginx/conf.d/default.conf

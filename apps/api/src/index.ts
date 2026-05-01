@@ -21,6 +21,7 @@ import { startSlackApp } from './services/slack.js';
 import { startNoShowWorker } from './workers/noshow.js';
 import { initSettings } from './services/settings.js';
 import adminSettingsRoutes from './routes/adminSettings.js';
+import setupRoutes from './routes/setup.js';
 
 const fastify = Fastify(
   env.NODE_ENV === 'development'
@@ -68,6 +69,9 @@ await fastify.register(fastifyRateLimit, {
 await initSettings(fastify.prisma);
 
 // ── Feature plugins & routes ──────────────────────────────────────────────────
+
+// Setup: /api/setup/status, /api/setup (public, no auth required)
+await fastify.register(setupRoutes);
 
 // Auth: /auth/login, /auth/callback, /auth/logout, /auth/me
 await fastify.register(authPlugin);

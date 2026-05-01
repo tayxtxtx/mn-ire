@@ -1,0 +1,84 @@
+# MakeNashville Booking System
+# Usage: docker compose -f docker-compose.prod.yml up -d
+# Then open http://localhost in your browser to complete setup.
+
+services:
+  api:
+    image: ghcr.io/tayxtxtx/mn-bookingsys-api:latest
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://mnbooking:mnbooking@postgres:5432/mnbooking
+      REDIS_URL: redis://redis:6379
+      API_PORT: "4000"
+      # These can be updated in Admin → Settings after first login
+      API_PUBLIC_URL: ${API_PUBLIC_URL:-http://localhost:4000}
+      WEB_PUBLIC_URL: ${WEB_PUBLIC_URL:-http://localhost}
+      KIOSK_PUBLIC_URL: ${KIOSK_PUBLIC_URL:-http://localhost:81}
+      AUTH_PROVIDER: local
+      # SESSION_SECRET is auto-generated and persisted to the api_data volume.
+      # Override here if you want a specific value.
+      SESSION_SECRET: ${SESSION_SECRET:-}
+    volumes:
+      - api_data:/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  web:
+    image: ghcr.io/tayxtxtx/mn-bookingsys-web:latest
+    restart: unless-stopped
+    ports:
+      - "${WEB_PORT:-80}:80"
+    depends_on:
+      - api
+
+  kiosk:
+    image: ghcr.io/tayxtxtx/mn-bookingsys-kiosk:latest
+    restart: unless-stopped
+    ports:
+      - "${KIOSK_PORT:-81}:80"
+    depends_on:
+      - api
+
+  status:
+    image: ghcr.io/tayxtxtx/mn-bookingsys-status:latest
+    restart: unless-stopped
+    ports:
+      - "${STATUS_PORT:-82}:80"
+    depends_on:
+      - api
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: mnbooking
+      POSTGRES_PASSWORD: mnbooking
+      POSTGRES_DB: mnbooking
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mnbooking"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redisdata:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  pgdata:
+  redisdata:
+  api_data:

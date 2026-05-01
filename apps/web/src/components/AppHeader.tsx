@@ -24,7 +24,14 @@ export default function AppHeader() {
     fetch('/auth/me', { credentials: 'include' })
       .then(async (r) => {
         if (r.ok) return r.json() as Promise<Me>;
-        // Not logged in — check provider then redirect
+        // Not logged in — check if first-run setup is required
+        const setupRes = await fetch('/api/setup/status').catch(() => null);
+        const setupData = setupRes?.ok ? await setupRes.json() as { required: boolean } : null;
+        if (setupData?.required) {
+          navigate('/setup');
+          return null;
+        }
+        // Check provider then redirect to appropriate login
         const providerRes = await fetch('/auth/provider').catch(() => null);
         const providerData = providerRes?.ok ? await providerRes.json() as { provider: string } : null;
         const provider = providerData?.provider ?? 'local';

@@ -3,15 +3,15 @@ services:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_USER: mnire
-      POSTGRES_PASSWORD: mnire
-      POSTGRES_DB: mnire
+      POSTGRES_USER: mnbooking
+      POSTGRES_PASSWORD: mnbooking
+      POSTGRES_DB: mnbooking
     ports:
       - '5432:5432'
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U mnire']
+      test: ['CMD-SHELL', 'pg_isready -U mnbooking']
       interval: 10s
       timeout: 5s
       retries: 5

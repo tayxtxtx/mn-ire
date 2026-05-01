@@ -1,0 +1,19 @@
+FROM node:20-alpine
+RUN npm install -g pnpm
+WORKDIR /app
+# Copy workspace root files
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+# Copy all packages needed for API build
+COPY packages/ packages/
+COPY apps/api/ apps/api/
+# Install all deps (including devDeps for tsc, prisma CLI)
+RUN pnpm install --frozen-lockfile
+# Generate Prisma client
+RUN pnpm db:generate
+# Build API TypeScript
+RUN pnpm --filter @makenashville/api build
+# Entrypoint handles DB push + SESSION_SECRET generation
+COPY docker/api-entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+EXPOSE 4000
+ENTRYPOINT ["/entrypoint.sh"]

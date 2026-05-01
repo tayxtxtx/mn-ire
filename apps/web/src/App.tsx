@@ -10,6 +10,7 @@ import AdminBookings from './pages/admin/AdminBookings.js';
 import AdminShops from './pages/admin/AdminShops.js';
 import AdminUsers from './pages/admin/AdminUsers.js';
 import AdminSettings from './pages/admin/AdminSettings.js';
+import Setup from './pages/Setup.js';
 
 export default function App() {
   return (
@@ -18,6 +19,7 @@ export default function App() {
         {/* ── Public routes (no header, no auth required) ─────────────────── */}
         <Route path="/login"         element={<Login />} />
         <Route path="/accept-invite" element={<AcceptInvite />} />
+        <Route path="/setup"         element={<Setup />} />
 
         {/* ── Authenticated app shell ──────────────────────────────────────── */}
         <Route
