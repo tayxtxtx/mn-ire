@@ -6,10 +6,12 @@
   "type": "module",
   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "types": "./src/index.ts",
+      "import": "./dist/index.js"
     }
   },
+  "main": "./dist/index.js",
+  "types": "./src/index.ts",
   "scripts": {
     "generate": "prisma generate",
     "migrate": "prisma migrate dev",
@@ -17,7 +19,7 @@
     "push": "prisma db push",
     "seed": "tsx src/seed.ts",
     "studio": "prisma studio",
-    "build": "tsc --project tsconfig.json"
+    "build": "tsc --project tsconfig.json && cp -r src/generated dist/"
   },
   "dependencies": {
     "@prisma/client": "^5.17.0"
